@@ -1,0 +1,167 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "view": "Ver",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "all": "Todos",
+    "none": "Ninguno",
+    "yes": "Sí",
+    "no": "No",
+    "back": "Volver",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "close": "Cerrar"
+  },
+  "nav": {
+    "home": "Inicio",
+    "services": "Servicios",
+    "professionals": "Profesionales",
+    "bookings": "Reservas",
+    "dashboard": "Panel",
+    "profile": "Perfil",
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar sesión",
+    "language": "Idioma"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "firstName": "Nombre",
+    "lastName": "Apellidos",
+    "phone": "Teléfono",
+    "rememberMe": "Recordarme",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "noAccount": "¿No tienes cuenta?",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "loginSuccess": "Sesión iniciada correctamente",
+    "registerSuccess": "Registro completado correctamente",
+    "logoutSuccess": "Sesión cerrada correctamente"
+  },
+  "home": {
+    "hero": {
+      "title": "Bienvenido a NeoCore",
+      "subtitle": "Tu centro de salud y bienestar integral",
+      "cta": "Reserva tu cita"
+    },
+    "features": {
+      "title": "Nuestros Servicios",
+      "subtitle": "Profesionales expertos para tu bienestar"
+    }
+  },
+  "services": {
+    "title": "Nuestros Servicios",
+    "subtitle": "Descubre todos los servicios disponibles",
+    "duration": "Duración",
+    "price": "Precio",
+    "minutes": "minutos",
+    "bookNow": "Reservar ahora",
+    "noProfessionals": "No hay profesionales disponibles",
+    "availableProfessionals": "Profesionales disponibles"
+  },
+  "booking": {
+    "title": "Nueva Reserva",
+    "selectService": "Seleccionar servicio",
+    "selectProfessional": "Seleccionar profesional",
+    "selectDateTime": "Seleccionar fecha y hora",
+    "confirm": "Confirmar reserva",
+    "notes": "Notas adicionales",
+    "notesPlaceholder": "Información adicional para el profesional",
+    "summary": "Resumen de tu reserva",
+    "service": "Servicio",
+    "professional": "Profesional",
+    "date": "Fecha",
+    "time": "Hora",
+    "duration": "Duración",
+    "status": {
+      "PENDING": "Pendiente",
+      "CONFIRMED": "Confirmada",
+      "REJECTED": "Rechazada",
+      "CANCELED": "Cancelada",
+      "DONE": "Completada"
+    },
+    "confirmBooking": "Confirmar",
+    "rejectBooking": "Rechazar",
+    "cancelBooking": "Cancelar",
+    "success": "Reserva creada correctamente",
+    "error": "Error al crear la reserva",
+    "noSlots": "No hay horarios disponibles",
+    "loadingSlots": "Cargando horarios disponibles..."
+  },
+  "dashboard": {
+    "client": {
+      "title": "Mi Panel",
+      "upcomingBookings": "Próximas Citas",
+      "pastBookings": "Citas Pasadas",
+      "noBookings": "No tienes citas programadas",
+      "bookNow": "Reservar una cita"
+    },
+    "professional": {
+      "title": "Panel Profesional",
+      "agenda": "Mi Agenda",
+      "pendingRequests": "Solicitudes Pendientes",
+      "availability": "Disponibilidad",
+      "timeOff": "Ausencias",
+      "noPending": "No hay solicitudes pendientes",
+      "addAvailability": "Añadir disponibilidad",
+      "addTimeOff": "Añadir ausencia"
+    },
+    "admin": {
+      "title": "Panel de Administración",
+      "users": "Usuarios",
+      "services": "Servicios",
+      "bookings": "Reservas",
+      "statistics": "Estadísticas"
+    }
+  },
+  "profile": {
+    "title": "Mi Perfil",
+    "editProfile": "Editar perfil",
+    "personalInfo": "Información Personal",
+    "professionalInfo": "Información Profesional",
+    "specialty": "Especialidad",
+    "bio": "Biografía",
+    "updateSuccess": "Perfil actualizado correctamente",
+    "updateError": "Error al actualizar el perfil"
+  },
+  "availability": {
+    "title": "Disponibilidad",
+    "rules": "Horarios Recurrentes",
+    "timeOff": "Ausencias",
+    "addRule": "Añadir horario",
+    "addTimeOff": "Añadir ausencia",
+    "day": "Día",
+    "startTime": "Hora inicio",
+    "endTime": "Hora fin",
+    "reason": "Motivo",
+    "startDate": "Fecha inicio",
+    "endDate": "Fecha fin",
+    "days": {
+      "0": "Lunes",
+      "1": "Martes",
+      "2": "Miércoles",
+      "3": "Jueves",
+      "4": "Viernes",
+      "5": "Sábado",
+      "6": "Domingo"
+    }
+  },
+  "errors": {
+    "generic": "Ha ocurrido un error",
+    "network": "Error de conexión",
+    "unauthorized": "No autorizado",
+    "notFound": "No encontrado",
+    "validation": "Error de validación"
+  }
+}

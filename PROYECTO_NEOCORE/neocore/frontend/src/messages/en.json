@@ -1,0 +1,167 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close"
+  },
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "professionals": "Professionals",
+    "bookings": "Bookings",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "language": "Language"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "loginSuccess": "Logged in successfully",
+    "registerSuccess": "Registered successfully",
+    "logoutSuccess": "Logged out successfully"
+  },
+  "home": {
+    "hero": {
+      "title": "Welcome to NeoCore",
+      "subtitle": "Your comprehensive health and wellness center",
+      "cta": "Book your appointment"
+    },
+    "features": {
+      "title": "Our Services",
+      "subtitle": "Expert professionals for your wellbeing"
+    }
+  },
+  "services": {
+    "title": "Our Services",
+    "subtitle": "Discover all available services",
+    "duration": "Duration",
+    "price": "Price",
+    "minutes": "minutes",
+    "bookNow": "Book now",
+    "noProfessionals": "No professionals available",
+    "availableProfessionals": "Available professionals"
+  },
+  "booking": {
+    "title": "New Booking",
+    "selectService": "Select service",
+    "selectProfessional": "Select professional",
+    "selectDateTime": "Select date and time",
+    "confirm": "Confirm booking",
+    "notes": "Additional notes",
+    "notesPlaceholder": "Additional information for the professional",
+    "summary": "Booking summary",
+    "service": "Service",
+    "professional": "Professional",
+    "date": "Date",
+    "time": "Time",
+    "duration": "Duration",
+    "status": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "REJECTED": "Rejected",
+      "CANCELED": "Canceled",
+      "DONE": "Completed"
+    },
+    "confirmBooking": "Confirm",
+    "rejectBooking": "Reject",
+    "cancelBooking": "Cancel",
+    "success": "Booking created successfully",
+    "error": "Error creating booking",
+    "noSlots": "No available time slots",
+    "loadingSlots": "Loading available slots..."
+  },
+  "dashboard": {
+    "client": {
+      "title": "My Dashboard",
+      "upcomingBookings": "Upcoming Appointments",
+      "pastBookings": "Past Appointments",
+      "noBookings": "You have no scheduled appointments",
+      "bookNow": "Book an appointment"
+    },
+    "professional": {
+      "title": "Professional Dashboard",
+      "agenda": "My Schedule",
+      "pendingRequests": "Pending Requests",
+      "availability": "Availability",
+      "timeOff": "Time Off",
+      "noPending": "No pending requests",
+      "addAvailability": "Add availability",
+      "addTimeOff": "Add time off"
+    },
+    "admin": {
+      "title": "Admin Dashboard",
+      "users": "Users",
+      "services": "Services",
+      "bookings": "Bookings",
+      "statistics": "Statistics"
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "editProfile": "Edit profile",
+    "personalInfo": "Personal Information",
+    "professionalInfo": "Professional Information",
+    "specialty": "Specialty",
+    "bio": "Biography",
+    "updateSuccess": "Profile updated successfully",
+    "updateError": "Error updating profile"
+  },
+  "availability": {
+    "title": "Availability",
+    "rules": "Recurring Schedule",
+    "timeOff": "Time Off",
+    "addRule": "Add schedule",
+    "addTimeOff": "Add time off",
+    "day": "Day",
+    "startTime": "Start time",
+    "endTime": "End time",
+    "reason": "Reason",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "days": {
+      "0": "Monday",
+      "1": "Tuesday",
+      "2": "Wednesday",
+      "3": "Thursday",
+      "4": "Friday",
+      "5": "Saturday",
+      "6": "Sunday"
+    }
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "network": "Network error",
+    "unauthorized": "Unauthorized",
+    "notFound": "Not found",
+    "validation": "Validation error"
+  }
+}
