@@ -246,11 +246,13 @@ AUTH_USER_MODEL = 'users.User'
 REST_FRAMEWORK = {
     # --- Autenticación ---
     # Métodos de autenticación soportados para las peticiones a la API.
-    # SessionAuthentication: para el panel de admin y navegador.
     # JWTAuthentication: para el frontend (tokens Bearer en cabeceras).
+    # SessionAuthentication: para el panel de admin y navegador.
+    # NOTA: JWTAuthentication debe ir primero para evitar que SessionAuthentication
+    # imponga la verificación CSRF en peticiones de la API desde el frontend.
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     # --- Permisos ---
     # Por defecto, todas las vistas requieren usuario autenticado.
@@ -306,9 +308,8 @@ SIMPLE_JWT = {
 # registro, login, logout, cambio de contraseña, etc.
 REST_AUTH = {
     'USE_JWT': True,                                # Usar JWT en lugar de tokens de sesión
-    'JWT_AUTH_COOKIE': 'neocore-auth',              # Nombre de la cookie del token de acceso
-    'JWT_AUTH_REFRESH_COOKIE': 'neocore-refresh',   # Nombre de la cookie del token de refresco
-    'JWT_AUTH_HTTPONLY': False,                      # Permitir acceso a la cookie desde JavaScript
+    'JWT_AUTH_COOKIE': None,                        # Desactivar cookies JWT; los tokens se envían en el body JSON
+    'JWT_AUTH_REFRESH_COOKIE': None,                # Desactivar cookies de refresco JWT
     'SESSION_LOGIN': False,                         # Desactivar login por sesión (evita problemas con CSRF)
     'USER_DETAILS_SERIALIZER': 'apps.users.serializers.UserSerializer',  # Serializador para los datos del usuario
     'LOGIN_SERIALIZER': 'dj_rest_auth.serializers.LoginSerializer',      # Serializador para el login

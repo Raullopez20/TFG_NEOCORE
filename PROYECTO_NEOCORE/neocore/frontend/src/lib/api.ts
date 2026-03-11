@@ -1,14 +1,15 @@
-import axios, { AxiosError } from 'axios';
+  import axios, { AxiosError } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Create axios instance
+// Uses the API URL directly; withCredentials is not needed since we use
+// JWT tokens via Authorization header (not cookies).
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Important for cookie-based auth
 });
 
 // Request interceptor to add auth token

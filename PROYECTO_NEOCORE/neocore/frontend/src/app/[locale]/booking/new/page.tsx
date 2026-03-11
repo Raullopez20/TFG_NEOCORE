@@ -21,6 +21,8 @@ export default function NewBookingPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
     service: searchParams.get('service') || '',
@@ -56,21 +58,36 @@ export default function NewBookingPage() {
     }
   };
 
+  const parseApiErrors = (data: any): string => {
+    if (!data) return 'Error al crear la reserva';
+    if (typeof data === 'string') return data;
+    if (data.non_field_errors) return data.non_field_errors.join('. ');
+    if (data.detail) return data.detail;
+    // Field-level errors: { "start_datetime": ["..."], "service": ["..."] }
+    const fieldErrors = Object.entries(data)
+      .filter(([, v]) => Array.isArray(v))
+      .map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`)
+      .join('. ');
+    return fieldErrors || 'Error al crear la reserva';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError('');
+    setSuccess(false);
 
     try {
-      const selectedService = services.find((s) => s.id === Number(formData.service));
-      if (!selectedService) {
-        alert('Por favor selecciona un servicio');
+      const svc = services.find((s) => s.id === Number(formData.service));
+      if (!svc) {
+        setError('Por favor selecciona un servicio');
+        setSubmitting(false);
         return;
       }
 
-      // Combinar fecha y hora
       const startDatetime = new Date(`${formData.date}T${formData.time}`);
       const endDatetime = new Date(
-        startDatetime.getTime() + selectedService.duration_minutes * 60000
+        startDatetime.getTime() + svc.duration_minutes * 60000
       );
 
       const bookingData = {
@@ -82,11 +99,20 @@ export default function NewBookingPage() {
       };
 
       await bookingsAPI.create(bookingData);
-      alert('¡Reserva creada con éxito!');
-      router.push('/es/bookings');
-    } catch (error: any) {
-      console.error('Error creating booking:', error);
-      alert(error.response?.data?.message || 'Error al crear la reserva');
+      setSuccess(true);
+      setTimeout(() => router.push('/es/bookings'), 2000);
+    } catch (err: any) {
+      console.error('Error creating booking:', err);
+      const msg = parseApiErrors(err.response?.data);
+      // Translate common backend validation messages to Spanish
+      const translations: Record<string, string> = {
+        "Slot not within professional's availability": 'El horario seleccionado no está dentro de la disponibilidad del profesional. Los profesionales atienden de lunes a viernes, de 9:00 a 18:00.',
+        'End time must be after start time': 'La hora de fin debe ser posterior a la hora de inicio.',
+        'Cannot book appointments in the past': 'No se pueden crear reservas en el pasado.',
+        'Slot overlaps with existing booking': 'El horario se solapa con una reserva existente.',
+        'Professional is on time off during this period': 'El profesional está de baja durante este periodo.',
+      };
+      setError(translations[msg] || msg);
     } finally {
       setSubmitting(false);
     }
@@ -218,10 +244,22 @@ export default function NewBookingPage() {
                   />
                 </div>
 
+                {/* Error/Success Messages */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                )}
+                {success && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700">Reserva creada con éxito. Redirigiendo...</p>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || success}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-lg font-semibold disabled:bg-gray-300"
                 >
                   {submitting ? 'Creando reserva...' : 'Confirmar Reserva'}

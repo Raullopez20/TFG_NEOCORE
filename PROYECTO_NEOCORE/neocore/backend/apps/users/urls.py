@@ -25,6 +25,7 @@ from dj_rest_auth.views import (
     PasswordResetConfirmView,
 )
 from dj_rest_auth.registration.views import RegisterView
+from rest_framework_simplejwt.views import TokenRefreshView
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
@@ -57,18 +58,19 @@ router.register(r'users', UserViewSet, basename='user')
 urlpatterns = [
     # --- Token CSRF ---
     path('csrf/', csrf_token, name='csrf_token'),
-    
+
     # --- Endpoints de autenticación (proporcionados por dj-rest-auth) ---
     path('register/', RegisterView.as_view(), name='rest_register'),
     path('login/', LoginView.as_view(), name='rest_login'),
     path('logout/', LogoutView.as_view(), name='rest_logout'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('password/change/', PasswordChangeView.as_view(), name='rest_password_change'),
     path('password/reset/', PasswordResetView.as_view(), name='rest_password_reset'),
     path('password/reset/confirm/', PasswordResetConfirmView.as_view(), name='rest_password_reset_confirm'),
-    
+
     # --- Gestión de usuarios (ViewSet con router) ---
     path('', include(router.urls)),
-    
+
     # --- Autenticación social (Google OAuth) ---
     path('social/', include('allauth.urls')),
 ]

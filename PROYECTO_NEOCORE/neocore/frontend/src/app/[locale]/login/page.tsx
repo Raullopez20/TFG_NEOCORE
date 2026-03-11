@@ -32,11 +32,12 @@ export default function LoginPage() {
 
     try {
       const response = await authAPI.login(formData.email, formData.password);
-      localStorage.setItem('access_token', response.access);
-      localStorage.setItem('refresh_token', response.refresh);
+      // dj-rest-auth puede devolver 'access_token'/'refresh_token' o 'access'/'refresh'
+      localStorage.setItem('access_token', response.access_token || response.access);
+      localStorage.setItem('refresh_token', response.refresh_token || response.refresh);
       router.push('/es/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Credenciales incorrectas');
+      setError(err.response?.data?.non_field_errors?.[0] || err.response?.data?.message || 'Credenciales incorrectas');
     } finally {
       setLoading(false);
     }
