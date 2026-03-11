@@ -1,5 +1,30 @@
 """
-Views for booking management.
+Vistas (views) para la gesti\u00f3n de reservas (bookings).
+
+Implementa un ViewSet completo con operaciones CRUD y acciones
+personalizadas que cubren todo el ciclo de vida de una reserva:
+
+    Acciones est\u00e1ndar:
+        - list:     Listar reservas (filtradas por rol del usuario).
+        - create:   Crear nueva reserva (solo clientes).
+        - retrieve: Ver detalle de una reserva.
+        - update:   Actualizar notas de la reserva.
+
+    Acciones de cambio de estado:
+        - confirm:   Confirmar reserva pendiente (solo profesionales).
+        - reject:    Rechazar reserva pendiente (solo profesionales).
+        - cancel:    Cancelar reserva (cliente, profesional o admin).
+        - mark_done: Marcar como completada (solo profesionales).
+
+    Acciones de consulta:
+        - upcoming: Reservas pr\u00f3ximas del usuario actual.
+        - past:     Reservas pasadas del usuario actual.
+        - stats:    Estad\u00edsticas globales (solo administradores).
+
+Control de acceso:
+    - Los clientes solo ven y gestionan sus propias reservas.
+    - Los profesionales ven las reservas donde son el profesional asignado.
+    - Los administradores ven y gestionan todas las reservas.
 """
 
 from datetime import datetime, timedelta
@@ -25,17 +50,29 @@ from apps.users.permissions import IsAdmin
 
 class BookingViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for booking management.
-    
-    Endpoints:
-        - list/create: Clients see their bookings, professionals see bookings assigned to them
-        - retrieve/update/destroy: Access control per user role
-        - confirm/reject: Professional-only actions
-        - cancel: Client or professional can cancel
-        - stats: Admin-only statistics
+    ViewSet principal para la gesti\u00f3n de reservas.
+
+    Proporciona endpoints CRUD completos m\u00e1s acciones personalizadas
+    para el flujo de estados de las reservas. Cada usuario solo puede
+    ver y operar sobre las reservas que le corresponden seg\u00fan su rol.
+
+    Filtros disponibles (v\u00eda query params):
+        - status: Filtrar por estado (PENDING, CONFIRMED, etc.).
+        - service: Filtrar por ID del servicio.
+        - professional: Filtrar por ID del profesional.
+        - client: Filtrar por ID del cliente.
+
+    B\u00fasqueda (v\u00eda ?search=):
+        Busca por nombre/apellido del cliente o profesional, o por
+        nombre del servicio.
+
+    Ordenaci\u00f3n (v\u00eda ?ordering=):
+        Campos disponibles: start_datetime, created_at, status.
+        Por defecto: -start_datetime (m\u00e1s recientes primero).
     """
     
     permission_classes = [IsAuthenticated]
+    # Backends de filtrado: filtros exactos, b\u00fasqueda por texto y ordenaci\u00f3n
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'service', 'professional', 'client']
     search_fields = ['client__first_name', 'client__last_name', 'professional__first_name', 'professional__last_name', 'service__name']
@@ -43,30 +80,49 @@ class BookingViewSet(viewsets.ModelViewSet):
     ordering = ['-start_datetime']
     
     def get_queryset(self):
-        # Handle schema generation
+        """
+        Devuelve las reservas visibles para el usuario actual.
+
+        Aplica select_related para cargar las relaciones en una sola
+        consulta SQL y evitar el problema N+1 en las vistas de listado.
+
+        Reglas de visibilidad:
+            - Admin/staff: todas las reservas del sistema.
+            - Profesional: solo las reservas donde es el profesional asignado.
+            - Cliente: solo las reservas donde es el cliente.
+        """
+        # Retornar queryset vac\u00edo para la generaci\u00f3n del esquema OpenAPI
         if getattr(self, 'swagger_fake_view', False):
             return Booking.objects.none()
         
         user = self.request.user
         
-        # Admin sees all bookings
+        # Administradores y staff ven todas las reservas
         if hasattr(user, 'is_admin_role') and (user.is_admin_role or user.is_staff):
             return Booking.objects.select_related(
                 'client', 'professional', 'service'
             ).all()
         
-        # Professional sees their bookings
+        # Los profesionales ven las reservas que tienen asignadas
         if hasattr(user, 'is_professional') and user.is_professional:
             return Booking.objects.select_related(
                 'client', 'professional', 'service'
             ).filter(professional=user)
         
-        # Client sees their bookings
+        # Los clientes ven sus propias reservas
         return Booking.objects.select_related(
             'client', 'professional', 'service'
         ).filter(client=user)
     
     def get_serializer_class(self):
+        """
+        Selecciona el serializador apropiado seg\u00fan la acci\u00f3n solicitada.
+
+        - create: BookingCreateSerializer (con validaciones de disponibilidad).
+        - update/partial_update: BookingUpdateSerializer (solo notas).
+        - list: BookingListSerializer (versi\u00f3n ligera sin anidamiento).
+        - Resto: BookingSerializer (vista completa con relaciones).
+        """
         if self.action == 'create':
             return BookingCreateSerializer
         if self.action in ['update', 'partial_update']:
@@ -76,7 +132,14 @@ class BookingViewSet(viewsets.ModelViewSet):
         return BookingSerializer
     
     def create(self, request, *args, **kwargs):
-        """Create a new booking (clients only)."""
+        """
+        Crea una nueva reserva (solo clientes).
+
+        Verifica que el usuario sea un cliente antes de procesar la solicitud.
+        El serializador se encarga de validar la disponibilidad del slot
+        y asignar autom\u00e1ticamente al cliente desde el usuario autenticado.
+        Devuelve la reserva completa con datos anidados (BookingSerializer).
+        """
         if not request.user.is_client:
             return Response(
                 {'error': 'Only clients can create bookings'},
@@ -87,14 +150,28 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         booking = serializer.save()
         
+        # Responder con la vista completa de la reserva reci\u00e9n creada
         return Response(
             BookingSerializer(booking).data,
             status=status.HTTP_201_CREATED
         )
     
+    # =========================================================================
+    # Acciones de cambio de estado
+    # =========================================================================
+    
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
-        """Confirm a pending booking (professionals only)."""
+        """
+        Confirma una reserva pendiente (solo profesionales).
+
+        Verifica que:
+            1. El usuario sea un profesional.
+            2. La reserva pertenezca a ese profesional.
+            3. La reserva est\u00e9 en un estado que permita confirmaci\u00f3n (PENDING).
+
+        Transici\u00f3n de estado: PENDING -> CONFIRMED.
+        """
         booking = self.get_object()
         
         if not request.user.is_professional:
@@ -122,7 +199,17 @@ class BookingViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
-        """Reject a pending booking (professionals only)."""
+        """
+        Rechaza una reserva pendiente (solo profesionales).
+
+        Verifica que:
+            1. El usuario sea un profesional.
+            2. La reserva pertenezca a ese profesional.
+            3. La reserva est\u00e9 en un estado que permita rechazo (PENDING).
+
+        Registra el motivo del rechazo, qui\u00e9n lo realiz\u00f3 y la fecha.
+        Transici\u00f3n de estado: PENDING -> REJECTED.
+        """
         booking = self.get_object()
         
         if not request.user.is_professional:
@@ -143,6 +230,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Actualizar estado y registrar datos de rechazo
         booking.status = Booking.Status.REJECTED
         booking.cancellation_reason = request.data.get('reason', '')
         booking.canceled_by = request.user
@@ -153,10 +241,18 @@ class BookingViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
-        """Cancel a booking (client or professional)."""
+        """
+        Cancela una reserva (cliente, profesional o administrador).
+
+        Tanto el cliente como el profesional asignado pueden cancelar
+        sus reservas. Los administradores pueden cancelar cualquier reserva.
+
+        Registra el motivo de cancelaci\u00f3n, qui\u00e9n la cancel\u00f3 y la fecha.
+        Transici\u00f3n de estado: PENDING|CONFIRMED -> CANCELED.
+        """
         booking = self.get_object()
         
-        # Check permissions
+        # Verificar que el usuario sea parte de la reserva o sea admin
         if booking.client != request.user and booking.professional != request.user:
             if not (request.user.is_admin_role or request.user.is_staff):
                 return Response(
@@ -170,6 +266,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Actualizar estado y registrar datos de cancelaci\u00f3n
         booking.status = Booking.Status.CANCELED
         booking.cancellation_reason = request.data.get('reason', '')
         booking.canceled_by = request.user
@@ -180,7 +277,13 @@ class BookingViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def mark_done(self, request, pk=None):
-        """Mark booking as done (professionals only)."""
+        """
+        Marca una reserva confirmada como completada (solo profesionales).
+
+        Solo las reservas con estado CONFIRMED pueden marcarse como hechas.
+        Verifica que el usuario sea el profesional asignado a la reserva.
+        Transici\u00f3n de estado: CONFIRMED -> DONE.
+        """
         booking = self.get_object()
         
         if not request.user.is_professional:
@@ -206,16 +309,30 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         return Response(BookingSerializer(booking).data)
     
+    # =========================================================================
+    # Acciones de consulta
+    # =========================================================================
+    
     @action(detail=False, methods=['get'], permission_classes=[IsAdmin])
     def stats(self, request):
-        """Get booking statistics (admin only)."""
-        # Get date range from query params
+        """
+        Obtiene estad\u00edsticas globales de reservas (solo administradores).
+
+        Par\u00e1metros de consulta:
+            - days (int, default=30): N\u00famero de d\u00edas hacia atr\u00e1s a analizar.
+
+        Devuelve:
+            - Totales por estado (pendientes, confirmadas, completadas, etc.).
+            - Agrupaci\u00f3n por servicio y por profesional.
+            - Reservas de la \u00faltima semana y \u00faltimo mes.
+        """
+        # Obtener el rango de d\u00edas desde los query params (por defecto 30)
         days = int(request.query_params.get('days', 30))
         start_date = timezone.now() - timedelta(days=days)
         
         bookings = Booking.objects.filter(created_at__gte=start_date)
         
-        # Overall stats
+        # Contadores generales por estado
         total_bookings = bookings.count()
         status_counts = bookings.values('status').annotate(count=Count('id'))
         
@@ -225,18 +342,18 @@ class BookingViewSet(viewsets.ModelViewSet):
         canceled = sum(s['count'] for s in status_counts if s['status'] == Booking.Status.CANCELED)
         rejected = sum(s['count'] for s in status_counts if s['status'] == Booking.Status.REJECTED)
         
-        # By service
+        # Agrupaci\u00f3n por nombre de servicio
         by_service = bookings.values('service__name').annotate(count=Count('id'))
         bookings_by_service = {item['service__name']: item['count'] for item in by_service}
         
-        # By professional
+        # Agrupaci\u00f3n por nombre completo del profesional
         by_professional = bookings.values('professional__first_name', 'professional__last_name').annotate(count=Count('id'))
         bookings_by_professional = {
             f"{item['professional__first_name']} {item['professional__last_name']}": item['count']
             for item in by_professional
         }
         
-        # Time-based
+        # M\u00e9tricas temporales: \u00faltima semana y \u00faltimo mes
         week_ago = timezone.now() - timedelta(days=7)
         month_ago = timezone.now() - timedelta(days=30)
         
@@ -263,7 +380,13 @@ class BookingViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
-        """Get upcoming bookings for the current user."""
+        """
+        Devuelve las reservas pr\u00f3ximas del usuario actual.
+
+        Filtra reservas cuya fecha de inicio sea futura y cuyo estado
+        sea PENDING o CONFIRMED (es decir, a\u00fan vigentes).
+        Ordenadas cronol\u00f3gicamente (m\u00e1s cercana primero).
+        """
         queryset = self.get_queryset().filter(
             start_datetime__gte=timezone.now(),
             status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
@@ -274,7 +397,13 @@ class BookingViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def past(self, request):
-        """Get past bookings for the current user."""
+        """
+        Devuelve las reservas pasadas del usuario actual.
+
+        Filtra reservas cuya fecha de fin ya haya pasado,
+        sin importar el estado. Ordenadas por fecha descendente
+        (m\u00e1s recientes primero).
+        """
         queryset = self.get_queryset().filter(
             end_datetime__lt=timezone.now()
         ).order_by('-start_datetime')

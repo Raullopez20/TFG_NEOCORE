@@ -1,5 +1,20 @@
 """
-Management command to seed the database with initial data.
+Comando de gestión para poblar la base de datos con datos de demostración.
+
+Uso:
+    python manage.py seed_data
+
+Crea un conjunto completo de datos de prueba para el sistema NeoCore:
+    - 1 administrador (admin@neocore.com / admin123).
+    - 4 profesionales con distintas especialidades.
+    - 3 clientes de ejemplo.
+    - 5 servicios asignados a los profesionales según su especialidad.
+    - Reglas de disponibilidad (lunes a viernes, 09:00-18:00).
+    - 1 período de vacaciones de ejemplo.
+    - 2 reservas de ejemplo (una confirmada y una pendiente).
+
+Este comando es idempotente: usa get_or_create para evitar duplicados
+si se ejecuta múltiples veces.
 """
 
 from django.core.management.base import BaseCommand
@@ -15,39 +30,53 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Seed the database with initial data for testing and demo'
+    """
+    Comando de Django para poblar la base de datos con datos iniciales.
+
+    Ejecuta secuencialmente la creación de usuarios, servicios,
+    disponibilidad y reservas de ejemplo. Al finalizar, muestra
+    un resumen con las credenciales y cantidades creadas.
+    """
+    
+    help = 'Puebla la base de datos con datos iniciales para pruebas y demostración'
     
     def handle(self, *args, **kwargs):
-        self.stdout.write('Starting database seed...')
+        """Punto de entrada principal del comando."""
+        self.stdout.write('Iniciando la carga de datos de demostración...')
         
-        # Create admin user
+        # Crear usuarios por rol
         admin = self._create_admin()
-        
-        # Create professionals
         professionals = self._create_professionals()
-        
-        # Create clients
         clients = self._create_clients()
         
-        # Create services
+        # Crear servicios y asignarlos a profesionales
         services = self._create_services(professionals)
         
-        # Create availability rules
+        # Configurar disponibilidad de los profesionales
         self._create_availability_rules(professionals)
-        
-        # Create some time-off
         self._create_time_offs(professionals)
         
-        # Create sample bookings
+        # Crear reservas de ejemplo en distintos estados
         self._create_sample_bookings(clients, professionals, services)
         
-        self.stdout.write(self.style.SUCCESS('Database seeded successfully!'))
+        # Resumen final
+        self.stdout.write(self.style.SUCCESS('¡Base de datos poblada exitosamente!'))
         self.stdout.write(f'  - Admin: admin@neocore.com / admin123')
-        self.stdout.write(f'  - Professionals: {len(professionals)}')
-        self.stdout.write(f'  - Clients: {len(clients)}')
-        self.stdout.write(f'  - Services: {len(services)}')
+        self.stdout.write(f'  - Profesionales: {len(professionals)}')
+        self.stdout.write(f'  - Clientes: {len(clients)}')
+        self.stdout.write(f'  - Servicios: {len(services)}')
+    
+    # =========================================================================
+    # Creación de usuarios
+    # =========================================================================
     
     def _create_admin(self):
+        """
+        Crea el usuario administrador del sistema.
+
+        Credenciales: admin@neocore.com / admin123
+        Tiene permisos is_staff e is_superuser para acceso completo al admin.
+        """
         admin, created = User.objects.get_or_create(
             email='admin@neocore.com',
             defaults={
@@ -61,10 +90,16 @@ class Command(BaseCommand):
         if created:
             admin.set_password('admin123')
             admin.save()
-            self.stdout.write(f'  Created admin: {admin.email}')
+            self.stdout.write(f'  Creado admin: {admin.email}')
         return admin
     
     def _create_professionals(self):
+        """
+        Crea 4 profesionales de ejemplo con distintas especialidades.
+
+        Especialidades: Fisioterapia, Nutrición, Entrenamiento Personal
+        y Psicología Deportiva. Contraseña común: professional123.
+        """
         professionals_data = [
             {
                 'email': 'maria.garcia@neocore.com',
@@ -116,12 +151,17 @@ class Command(BaseCommand):
             if created:
                 prof.set_password('professional123')
                 prof.save()
-                self.stdout.write(f'  Created professional: {prof.email}')
+                self.stdout.write(f'  Creado profesional: {prof.email}')
             professionals.append(prof)
         
         return professionals
     
     def _create_clients(self):
+        """
+        Crea 3 clientes de ejemplo.
+
+        Contraseña común: client123.
+        """
         clients_data = [
             {
                 'email': 'pedro.sanchez@example.com',
@@ -157,12 +197,23 @@ class Command(BaseCommand):
             if created:
                 client.set_password('client123')
                 client.save()
-                self.stdout.write(f'  Created client: {client.email}')
+                self.stdout.write(f'  Creado cliente: {client.email}')
             clients.append(client)
         
         return clients
     
+    # =========================================================================
+    # Creación de servicios
+    # =========================================================================
+    
     def _create_services(self, professionals):
+        """
+        Crea 5 servicios y los asigna a los profesionales según su especialidad.
+
+        Cada servicio tiene nombre, descripción, duración en minutos y precio.
+        Los profesionales se asignan automáticamente filtrando por coincidencia
+        de especialidad entre el servicio y el profesional.
+        """
         services_data = [
             {
                 'name': 'Sesión de Fisioterapia',
@@ -212,18 +263,27 @@ class Command(BaseCommand):
                 }
             )
             if created:
-                # Assign professionals with matching specialty
+                # Asignar profesionales que coincidan por especialidad
                 matching_profs = [p for p in professionals if p.specialty == data['specialty']]
                 service.professionals.set(matching_profs)
-                self.stdout.write(f'  Created service: {service.name}')
+                self.stdout.write(f'  Creado servicio: {service.name}')
             services.append(service)
         
         return services
     
+    # =========================================================================
+    # Configuración de disponibilidad
+    # =========================================================================
+    
     def _create_availability_rules(self, professionals):
-        # Create standard availability: Monday-Friday 9:00-18:00
+        """
+        Crea reglas de disponibilidad estándar para todos los profesionales.
+
+        Horario: Lunes a Viernes, de 09:00 a 18:00.
+        Cada profesional recibe 5 reglas (una por día laborable).
+        """
         for prof in professionals:
-            for day in range(5):  # Monday to Friday
+            for day in range(5):  # 0=Lunes ... 4=Viernes
                 rule, created = AvailabilityRule.objects.get_or_create(
                     professional=prof,
                     day_of_week=day,
@@ -233,10 +293,15 @@ class Command(BaseCommand):
                     }
                 )
                 if created:
-                    self.stdout.write(f'  Created availability rule for {prof.get_full_name()} on day {day}')
+                    self.stdout.write(f'  Creada regla de disponibilidad para {prof.get_full_name()} el día {day}')
     
     def _create_time_offs(self, professionals):
-        # Create time-off for first professional (vacation next week)
+        """
+        Crea un período de vacaciones de ejemplo para el primer profesional.
+
+        Se programa una semana de vacaciones empezando 7 días después
+        de la fecha actual.
+        """
         next_week = date.today() + timedelta(days=7)
         TimeOff.objects.get_or_create(
             professional=professionals[0],
@@ -246,17 +311,28 @@ class Command(BaseCommand):
                 'reason': 'Vacaciones'
             }
         )
-        self.stdout.write(f'  Created time-off for {professionals[0].get_full_name()}')
+        self.stdout.write(f'  Creado período de ausencia para {professionals[0].get_full_name()}')
+    
+    # =========================================================================
+    # Creación de reservas de ejemplo
+    # =========================================================================
     
     def _create_sample_bookings(self, clients, professionals, services):
+        """
+        Crea reservas de ejemplo en distintos estados.
+
+        Crea dos reservas:
+            1. Reserva CONFIRMADA para mañana a las 10:00 (fisioterapia).
+            2. Reserva PENDIENTE para pasado mañana a las 14:00 (nutrición).
+        """
         if not clients or not professionals or not services:
             return
         
-        # Create some bookings in different states
+        # Fecha base: mañana a las 10:00
         tomorrow = timezone.now() + timedelta(days=1)
         tomorrow = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
         
-        # Confirmed booking
+        # Reserva confirmada: primer cliente con primer profesional (fisioterapia)
         service = services[0]
         booking, created = Booking.objects.get_or_create(
             client=clients[0],
@@ -270,9 +346,9 @@ class Command(BaseCommand):
             }
         )
         if created:
-            self.stdout.write(f'  Created confirmed booking')
+            self.stdout.write(f'  Creada reserva confirmada')
         
-        # Pending booking
+        # Reserva pendiente: segundo cliente con segundo profesional (nutrición)
         day_after = tomorrow + timedelta(days=1)
         service2 = services[1]
         booking2, created = Booking.objects.get_or_create(
@@ -287,4 +363,4 @@ class Command(BaseCommand):
             }
         )
         if created:
-            self.stdout.write(f'  Created pending booking')
+            self.stdout.write(f'  Creada reserva pendiente')

@@ -1,5 +1,9 @@
 """
-Admin configuration for Booking model.
+Configuración del panel de administración para el modelo de Reserva (Booking).
+
+Personaliza la interfaz del admin de Django para ofrecer una gestión visual
+de las reservas con badges de colores por estado, jerarquía por fechas,
+y acciones masivas para confirmar, finalizar o cancelar reservas.
 """
 
 from django.contrib import admin
@@ -9,8 +13,17 @@ from .models import Booking
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    """Admin for Booking model."""
+    """
+    Configuración del admin para el modelo Booking.
+
+    Características destacadas:
+        - Badge de color según el estado de la reserva.
+        - Jerarquía por fecha para navegación temporal.
+        - Secciones colapsables para cancelación y metadatos.
+        - Acciones masivas para cambiar estados.
+    """
     
+    # Columnas visibles en el listado de reservas
     list_display = [
         'id',
         'client',
@@ -20,7 +33,9 @@ class BookingAdmin(admin.ModelAdmin):
         'status_badge',
         'created_at',
     ]
+    # Filtros en la barra lateral
     list_filter = ['status', 'service', 'professional', 'created_at', 'start_datetime']
+    # Campos de búsqueda
     search_fields = [
         'client__first_name',
         'client__last_name',
@@ -30,23 +45,25 @@ class BookingAdmin(admin.ModelAdmin):
         'professional__email',
         'service__name',
     ]
+    # Navegación jerárquica por fecha de inicio
     date_hierarchy = 'start_datetime'
     
+    # Agrupación de campos en secciones lógicas
     fieldsets = (
-        ('Participants', {
+        ('Participantes', {
             'fields': ('client', 'professional', 'service')
         }),
-        ('Schedule', {
+        ('Horario', {
             'fields': ('start_datetime', 'end_datetime', 'status')
         }),
-        ('Notes', {
+        ('Notas', {
             'fields': ('client_notes', 'professional_notes')
         }),
-        ('Cancellation', {
+        ('Cancelación', {
             'fields': ('cancellation_reason', 'canceled_by', 'canceled_at'),
-            'classes': ('collapse',)
+            'classes': ('collapse',)  # Sección colapsable por defecto
         }),
-        ('Metadata', {
+        ('Metadatos', {
             'fields': ('reminder_sent', 'reminder_sent_at', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
@@ -55,7 +72,16 @@ class BookingAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
     
     def status_badge(self, obj):
-        """Display status as colored badge."""
+        """
+        Muestra el estado de la reserva como un badge con color.
+
+        Colores:
+            - Amarillo: Pendiente
+            - Verde: Confirmada
+            - Rojo: Rechazada
+            - Gris: Cancelada
+            - Azul: Completada
+        """
         colors = {
             'PENDING': '#ffc107',
             'CONFIRMED': '#28a745',
@@ -69,25 +95,29 @@ class BookingAdmin(admin.ModelAdmin):
             color,
             obj.get_status_display()
         )
-    status_badge.short_description = 'Status'
+    status_badge.short_description = 'Estado'
     
+    # --- Acciones masivas ---
     actions = ['mark_as_confirmed', 'mark_as_done', 'mark_as_canceled']
     
     def mark_as_confirmed(self, request, queryset):
+        """Acción masiva: confirmar las reservas pendientes seleccionadas."""
         updated = queryset.filter(status=Booking.Status.PENDING).update(
             status=Booking.Status.CONFIRMED
         )
-        self.message_user(request, f'{updated} bookings marked as confirmed.')
-    mark_as_confirmed.short_description = 'Mark selected as Confirmed'
+        self.message_user(request, f'{updated} reservas marcadas como confirmadas.')
+    mark_as_confirmed.short_description = 'Marcar seleccionadas como Confirmadas'
     
     def mark_as_done(self, request, queryset):
+        """Acción masiva: marcar como completadas las reservas confirmadas seleccionadas."""
         updated = queryset.filter(status=Booking.Status.CONFIRMED).update(
             status=Booking.Status.DONE
         )
-        self.message_user(request, f'{updated} bookings marked as done.')
-    mark_as_done.short_description = 'Mark selected as Done'
+        self.message_user(request, f'{updated} reservas marcadas como completadas.')
+    mark_as_done.short_description = 'Marcar seleccionadas como Completadas'
     
     def mark_as_canceled(self, request, queryset):
+        """Acción masiva: cancelar las reservas pendientes o confirmadas seleccionadas."""
         from django.utils import timezone
         updated = queryset.filter(
             status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
@@ -96,5 +126,5 @@ class BookingAdmin(admin.ModelAdmin):
             canceled_by=request.user,
             canceled_at=timezone.now()
         )
-        self.message_user(request, f'{updated} bookings marked as canceled.')
-    mark_as_canceled.short_description = 'Mark selected as Canceled'
+        self.message_user(request, f'{updated} reservas marcadas como canceladas.')
+    mark_as_canceled.short_description = 'Marcar seleccionadas como Canceladas'

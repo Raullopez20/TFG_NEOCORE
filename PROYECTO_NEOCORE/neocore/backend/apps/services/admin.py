@@ -1,5 +1,9 @@
 """
-Admin configuration for Service model.
+Configuración del panel de administración para el modelo de Servicio.
+
+Personaliza la interfaz del admin de Django para facilitar la gestión
+del catálogo de servicios, incluyendo la asignación de profesionales
+mediante un widget de selección horizontal.
 """
 
 from django.contrib import admin
@@ -8,8 +12,15 @@ from .models import Service
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    """Admin for Service model."""
+    """
+    Configuración del admin para el modelo Service.
+
+    Permite gestionar los servicios del centro con filtros por estado,
+    búsqueda por nombre/descripción, y asignación visual de profesionales
+    mediante un widget de selección horizontal (filter_horizontal).
+    """
     
+    # Columnas visibles en el listado
     list_display = [
         'name',
         'duration_minutes',
@@ -20,16 +31,18 @@ class ServiceAdmin(admin.ModelAdmin):
     ]
     list_filter = ['is_active', 'created_at']
     search_fields = ['name', 'description']
+    # Widget de selección horizontal para asignar profesionales al servicio
     filter_horizontal = ['professionals']
     
+    # Agrupación de campos en secciones lógicas
     fieldsets = (
         (None, {
             'fields': ('name', 'description', 'image')
         }),
-        ('Details', {
+        ('Detalles', {
             'fields': ('duration_minutes', 'price', 'is_active')
         }),
-        ('Professionals', {
+        ('Profesionales asignados', {
             'fields': ('professionals',)
         }),
     )

@@ -1,5 +1,13 @@
 """
-URL configuration for services app.
+Configuración de URLs para la app de servicios.
+
+Registra el ViewSet de servicios en un router de DRF que genera
+automáticamente los endpoints CRUD:
+    - GET    /api/services/       -> Listar servicios activos
+    - POST   /api/services/       -> Crear servicio (solo admin)
+    - GET    /api/services/{id}/  -> Detalle de un servicio
+    - PUT    /api/services/{id}/  -> Actualizar servicio (solo admin)
+    - DELETE /api/services/{id}/  -> Eliminar servicio (solo admin)
 """
 
 from django.urls import path, include

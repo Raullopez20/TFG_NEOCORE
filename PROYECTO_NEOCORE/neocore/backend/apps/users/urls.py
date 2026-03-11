@@ -1,5 +1,18 @@
 """
-URL configuration for users app.
+Configuración de URLs para la app de usuarios.
+
+Define los endpoints relacionados con la autenticación y gestión de usuarios:
+    - /csrf/                      -> Obtener token CSRF
+    - /register/                  -> Registro de nuevos usuarios
+    - /login/                     -> Inicio de sesión (devuelve tokens JWT)
+    - /logout/                    -> Cierre de sesión
+    - /password/change/           -> Cambio de contraseña
+    - /password/reset/            -> Solicitud de restablecimiento de contraseña
+    - /password/reset/confirm/    -> Confirmación del restablecimiento
+    - /users/                     -> CRUD de usuarios (según permisos)
+    - /users/me/                  -> Perfil del usuario autenticado
+    - /users/professionals/       -> Listado público de profesionales
+    - /social/                    -> Autenticación social (Google OAuth)
 """
 
 from django.urls import path, include
@@ -19,20 +32,33 @@ from rest_framework.permissions import AllowAny
 
 from .views import UserViewSet
 
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def csrf_token(request):
-    """Get CSRF token."""
+    """
+    Endpoint para obtener el token CSRF.
+
+    El frontend necesita este token para incluirlo en las peticiones
+    que modifiquen datos (POST, PUT, DELETE) cuando la protección
+    CSRF está activa (solo en producción).
+
+    Retorna:
+        JsonResponse: {'csrfToken': '<token_csrf>'}
+    """
     return JsonResponse({'csrfToken': get_token(request)})
 
+
+# Registro del ViewSet de usuarios en el router de DRF.
+# Genera automáticamente las rutas CRUD: /users/, /users/{id}/, etc.
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
-    # CSRF token endpoint
+    # --- Token CSRF ---
     path('csrf/', csrf_token, name='csrf_token'),
     
-    # Authentication endpoints
+    # --- Endpoints de autenticación (proporcionados por dj-rest-auth) ---
     path('register/', RegisterView.as_view(), name='rest_register'),
     path('login/', LoginView.as_view(), name='rest_login'),
     path('logout/', LogoutView.as_view(), name='rest_logout'),
@@ -40,9 +66,9 @@ urlpatterns = [
     path('password/reset/', PasswordResetView.as_view(), name='rest_password_reset'),
     path('password/reset/confirm/', PasswordResetConfirmView.as_view(), name='rest_password_reset_confirm'),
     
-    # User management
+    # --- Gestión de usuarios (ViewSet con router) ---
     path('', include(router.urls)),
     
-    # Social auth (Google)
+    # --- Autenticación social (Google OAuth) ---
     path('social/', include('allauth.urls')),
 ]

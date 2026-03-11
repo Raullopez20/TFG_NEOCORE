@@ -1,5 +1,17 @@
 """
-Signals for booking-related events.
+Señales (signals) para eventos relacionados con las reservas.
+
+Define handlers que se ejecutan automáticamente cuando se crea o
+actualiza una reserva, permitiendo enviar notificaciones por email
+a los participantes según el tipo de evento:
+
+    - Reserva creada: se notifica al profesional.
+    - Reserva confirmada: se notifica al cliente.
+    - Reserva rechazada: se notifica al cliente.
+    - Reserva cancelada: se notifica a la otra parte (según quién cancela).
+
+Las notificaciones se envían de forma asíncrona mediante tareas de Celery
+para no bloquear la respuesta HTTP al usuario.
 """
 
 from django.db.models.signals import post_save, pre_save
@@ -12,7 +24,13 @@ from apps.notifications.tasks import send_booking_notification
 
 @receiver(pre_save, sender=Booking)
 def track_status_change(sender, instance, **kwargs):
-    """Track status changes to trigger appropriate notifications."""
+    """
+    Se ejecuta ANTES de guardar una reserva.
+
+    Almacena el estado anterior de la reserva en un atributo temporal
+    (_old_status) para poder compararlo después del guardado y detectar
+    cambios de estado que requieran notificación.
+    """
     if instance.pk:
         try:
             old_instance = Booking.objects.get(pk=instance.pk)
@@ -26,45 +44,54 @@ def track_status_change(sender, instance, **kwargs):
 @receiver(post_save, sender=Booking)
 def handle_booking_created_or_updated(sender, instance, created, **kwargs):
     """
-    Send notifications when booking is created or status changes.
+    Se ejecuta DESPUÉS de guardar una reserva.
+
+    Envía notificaciones por email según el evento:
+        - Si es una nueva reserva: notifica al profesional de la nueva solicitud.
+        - Si cambió el estado:
+            - CONFIRMED: notifica al cliente que su reserva fue aceptada.
+            - REJECTED: notifica al cliente que su reserva fue rechazada.
+            - CANCELED: notifica a la parte contraria de la cancelación.
+
+    Las notificaciones se encolan en Celery (.delay()) para procesarse
+    en segundo plano sin afectar el tiempo de respuesta de la API.
     """
     if created:
-        # New booking created - notify professional
+        # Nueva reserva creada -> notificar al profesional
         send_booking_notification.delay(
             booking_id=instance.id,
             notification_type='booking_created',
             recipient='professional'
         )
     else:
-        # Status changed
+        # Verificar si hubo un cambio de estado
         old_status = getattr(instance, '_old_status', None)
         if old_status and old_status != instance.status:
-            # Notify based on new status
             if instance.status == Booking.Status.CONFIRMED:
-                # Notify client that booking was confirmed
+                # Reserva confirmada -> notificar al cliente
                 send_booking_notification.delay(
                     booking_id=instance.id,
                     notification_type='booking_confirmed',
                     recipient='client'
                 )
             elif instance.status == Booking.Status.REJECTED:
-                # Notify client that booking was rejected
+                # Reserva rechazada -> notificar al cliente
                 send_booking_notification.delay(
                     booking_id=instance.id,
                     notification_type='booking_rejected',
                     recipient='client'
                 )
             elif instance.status == Booking.Status.CANCELED:
-                # Notify both parties
+                # Reserva cancelada -> notificar a la otra parte
                 if instance.canceled_by == instance.client:
-                    # Client canceled - notify professional
+                    # El cliente canceló -> notificar al profesional
                     send_booking_notification.delay(
                         booking_id=instance.id,
                         notification_type='booking_canceled',
                         recipient='professional'
                     )
                 else:
-                    # Professional canceled - notify client
+                    # El profesional canceló -> notificar al cliente
                     send_booking_notification.delay(
                         booking_id=instance.id,
                         notification_type='booking_canceled',
