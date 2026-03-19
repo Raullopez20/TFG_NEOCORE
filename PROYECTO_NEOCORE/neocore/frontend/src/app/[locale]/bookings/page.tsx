@@ -51,10 +51,15 @@ export default function BookingsPage() {
     }
   };
 
-  const filteredBookings = bookings.filter((booking) =>
-    booking.service_info?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    booking.professional_info?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBookings = bookings.filter((booking) => {
+    const serviceName = (booking.service_info as { name?: string } | undefined)?.name ?? '';
+    const professionalName = (booking.professional_info as { full_name?: string } | undefined)?.full_name ?? '';
+    const term = searchTerm.toLowerCase();
+    return (
+      serviceName.toLowerCase().includes(term) ||
+      professionalName.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -281,10 +286,10 @@ function BookingCard({ booking, onUpdate }: { booking: Booking; onUpdate: () => 
             </div>
           </div>
 
-          {booking.notes && (
+          {(booking.client_notes || (booking as { notes?: string }).notes) && (
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">
-                <span className="font-medium">Notas:</span> {booking.notes}
+                <span className="font-medium">Notas:</span> {booking.client_notes || (booking as { notes?: string }).notes}
               </p>
             </div>
           )}

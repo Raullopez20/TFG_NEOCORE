@@ -2,9 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { professionalsAPI, Professional } from '@/lib/api';
-import { User, Briefcase, Star, Calendar, Search } from 'lucide-react';
+import { Briefcase, Star, Calendar, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const PROFESSIONAL_IMAGES: Record<string, string> = {
+  medicina: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop',
+  fisioterapia: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop',
+  psicolog: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop',
+  nutrición: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop',
+  default: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop',
+};
+
+function getProfessionalImage(specialty: string): string {
+  const n = specialty.toLowerCase();
+  if (n.includes('medicina') || n.includes('médic')) return PROFESSIONAL_IMAGES.medicina;
+  if (n.includes('fisioterapia') || n.includes('rehabilitación')) return PROFESSIONAL_IMAGES.fisioterapia;
+  if (n.includes('psicolog')) return PROFESSIONAL_IMAGES.psicolog;
+  if (n.includes('nutrición') || n.includes('nutricion')) return PROFESSIONAL_IMAGES.nutrición;
+  return PROFESSIONAL_IMAGES.default;
+}
 
 export default function ProfessionalsPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -96,57 +114,45 @@ export default function ProfessionalsPage() {
 }
 
 function ProfessionalCard({ professional }: { professional: Professional }) {
+  const imageSrc = professional.profile_image || getProfessionalImage(professional.specialty);
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-6 group">
-      {/* Avatar */}
-      <div className="relative mb-4">
-        <div className="w-24 h-24 rounded-full mx-auto bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center overflow-hidden">
-          {professional.profile_image ? (
-            <img
-              src={professional.profile_image}
-              alt={professional.full_name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <User className="w-12 h-12 text-white" />
-          )}
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 group">
+      <div className="relative w-full h-64 overflow-hidden">
+        <Image
+          src={imageSrc}
+          alt={professional.full_name}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+          className="object-cover group-hover:scale-110 transition-transform duration-300"
+          unoptimized
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+          <p className="text-sm text-blue-300">{professional.specialty}</p>
         </div>
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-green-500 w-6 h-6 rounded-full border-4 border-white"></div>
       </div>
-
-      {/* Info */}
-      <div className="text-center mb-4">
-        <h3 className="text-lg font-bold text-gray-900 mb-1">
-          {professional.full_name}
-        </h3>
-        <div className="flex items-center justify-center gap-1 text-sm text-indigo-600">
+      <div className="p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-1">{professional.full_name}</h3>
+        <div className="flex items-center gap-1 text-sm text-indigo-600 mb-3">
           <Briefcase className="w-4 h-4" />
           <span>{professional.specialty}</span>
         </div>
+        {professional.bio && (
+          <p className="text-sm text-gray-600 mb-4 line-clamp-2">{professional.bio}</p>
+        )}
+        <div className="flex items-center gap-1 mb-4">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star key={star} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+          ))}
+          <span className="text-sm text-gray-600 ml-1">(4.9)</span>
+        </div>
+        <Link href={`/es/professionals/${professional.id}`}>
+          <Button className="w-full bg-indigo-600 hover:bg-indigo-700 group-hover:shadow-lg transition-all">
+            <Calendar className="w-4 h-4 mr-2" />
+            Agendar Cita
+          </Button>
+        </Link>
       </div>
-
-      {/* Bio */}
-      {professional.bio && (
-        <p className="text-sm text-gray-600 text-center mb-4 line-clamp-3">
-          {professional.bio}
-        </p>
-      )}
-
-      {/* Rating */}
-      <div className="flex items-center justify-center gap-1 mb-4">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star key={star} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-        ))}
-        <span className="text-sm text-gray-600 ml-1">(4.9)</span>
-      </div>
-
-      {/* CTA */}
-      <Link href={`/es/professionals/${professional.id}`}>
-        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 group-hover:shadow-lg transition-all">
-          <Calendar className="w-4 h-4 mr-2" />
-          Agendar Cita
-        </Button>
-      </Link>
     </div>
   );
 }

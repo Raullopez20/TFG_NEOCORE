@@ -2,9 +2,48 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { servicesAPI, Service } from '@/lib/api';
 import { Calendar, Clock, Users, ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const UNSPLASH = {
+  fisioterapia: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=400&fit=crop',
+  entrenamiento: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=400&fit=crop',
+  masaje: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&h=400&fit=crop',
+  psicologia: 'https://images.unsplash.com/photo-1527137342181-19aab11a8ee8?w=800&h=400&fit=crop',
+  nutricion: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=400&fit=crop',
+  medicina: 'https://images.unsplash.com/photo-1535916707207-35f97e715e1b?w=800&h=400&fit=crop',
+  bienestar: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&h=400&fit=crop',
+  default: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=400&fit=crop',
+};
+
+function getServiceImage(name: string): string {
+  const normalized = name.toLowerCase();
+
+  if (normalized.includes('fisioterapia') || normalized.includes('rehabilitación')) {
+    return UNSPLASH.fisioterapia;
+  }
+  if (normalized.includes('entrenamiento') || normalized.includes('personal') || normalized.includes('fitness')) {
+    return UNSPLASH.entrenamiento;
+  }
+  if (normalized.includes('masaje') || normalized.includes('deportivo')) {
+    return UNSPLASH.masaje;
+  }
+  if (normalized.includes('psicolog') || normalized.includes('terapia') || normalized.includes('emocional')) {
+    return UNSPLASH.psicologia;
+  }
+  if (normalized.includes('nutric') || normalized.includes('alimentación')) {
+    return UNSPLASH.nutricion;
+  }
+  if (normalized.includes('medicina') || normalized.includes('general') || normalized.includes('consulta')) {
+    return UNSPLASH.medicina;
+  }
+  if (normalized.includes('bienestar') || normalized.includes('spa') || normalized.includes('relajación')) {
+    return UNSPLASH.bienestar;
+  }
+  return UNSPLASH.default;
+}
 
 export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
@@ -102,17 +141,14 @@ function ServiceCard({ service }: { service: Service }) {
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
       {/* Image */}
       <div className="relative h-48 bg-gradient-to-br from-blue-500 to-blue-700 overflow-hidden">
-        {service.image ? (
-          <img
-            src={service.image}
-            alt={service.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Calendar className="w-16 h-16 text-white opacity-50" />
-          </div>
-        )}
+        <Image
+          src={service.image || getServiceImage(service.name)}
+          alt={service.name}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover group-hover:scale-110 transition-transform duration-300"
+          unoptimized
+        />
         {service.price && (
           <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full shadow-lg">
             <span className="text-lg font-bold text-blue-600">€{service.price}</span>

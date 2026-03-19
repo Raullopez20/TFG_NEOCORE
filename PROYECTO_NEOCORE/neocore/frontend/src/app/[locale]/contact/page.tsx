@@ -31,7 +31,7 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="relative h-[400px] bg-gradient-to-br from-blue-600 to-blue-800">
+      <div className="relative min-h-[320px] md:h-[400px] bg-gradient-to-br from-blue-600 to-blue-800">
         <div
           className="absolute inset-0 opacity-20"
           style={{
@@ -40,7 +40,7 @@ export default function ContactPage() {
             backgroundPosition: 'center',
           }}
         />
-        <div className="relative container mx-auto px-4 h-full flex items-center">
+        <div className="relative container mx-auto px-4 h-full flex items-center py-12 md:py-0">
           <div className="max-w-2xl text-white">
             <h1 className="text-5xl font-bold mb-4">Contáctanos</h1>
             <p className="text-xl text-blue-100">
@@ -51,7 +51,7 @@ export default function ContactPage() {
       </div>
 
       {/* Contact Info Cards */}
-      <div className="container mx-auto px-4 -mt-16 mb-16">
+      <div className="container mx-auto px-4 -mt-8 md:-mt-16 mb-16 relative z-10">
         <div className="grid md:grid-cols-4 gap-6">
           <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">

@@ -35,7 +35,22 @@ export default function RegisterPage() {
       await authAPI.register(formData);
       router.push('/es/login?registered=true');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrar usuario');
+      const data = err.response?.data;
+      if (typeof data === 'string') {
+        setError(data);
+      } else if (data?.detail) {
+        setError(Array.isArray(data.detail) ? data.detail.join(' ') : data.detail);
+      } else if (data?.message) {
+        setError(data.message);
+      } else if (data && typeof data === 'object') {
+        const parts = Object.entries(data).map(([k, v]) => {
+          const msg = Array.isArray(v) ? v.join(' ') : String(v);
+          return msg ? `${k}: ${msg}` : '';
+        }).filter(Boolean);
+        setError(parts.length ? parts.join('. ') : 'Error al registrar usuario');
+      } else {
+        setError(err.message || 'Error al registrar usuario');
+      }
     } finally {
       setLoading(false);
     }

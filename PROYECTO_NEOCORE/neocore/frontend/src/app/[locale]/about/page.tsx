@@ -67,7 +67,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="relative h-[500px] bg-gradient-to-br from-blue-600 to-blue-800 overflow-hidden">
+      <div className="relative min-h-[380px] md:h-[500px] bg-gradient-to-br from-blue-600 to-blue-800 overflow-hidden">
         <div
           className="absolute inset-0 opacity-20"
           style={{
@@ -76,7 +76,7 @@ export default function AboutPage() {
             backgroundPosition: 'center',
           }}
         />
-        <div className="relative container mx-auto px-4 h-full flex items-center">
+        <div className="relative container mx-auto px-4 h-full flex items-center py-16 md:py-0">
           <div className="max-w-3xl text-white">
             <h1 className="text-5xl md:text-6xl font-bold mb-6">
               Transformando la Salud y el Bienestar
@@ -90,7 +90,7 @@ export default function AboutPage() {
       </div>
 
       {/* Stats Section */}
-      <div className="container mx-auto px-4 -mt-16">
+      <div className="container mx-auto px-4 -mt-8 md:-mt-16 relative z-10">
         <div className="grid md:grid-cols-4 gap-6 mb-16">
           {stats.map((stat, index) => (
             <div

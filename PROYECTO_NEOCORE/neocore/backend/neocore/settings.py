@@ -313,6 +313,7 @@ REST_AUTH = {
     'SESSION_LOGIN': False,                         # Desactivar login por sesión (evita problemas con CSRF)
     'USER_DETAILS_SERIALIZER': 'apps.users.serializers.UserSerializer',  # Serializador para los datos del usuario
     'LOGIN_SERIALIZER': 'dj_rest_auth.serializers.LoginSerializer',      # Serializador para el login
+    'REGISTER_SERIALIZER': 'apps.users.serializers.CustomRegisterSerializer',  # Registro con first_name, last_name, phone y rol CLIENT
 }
 
 # ============================================================================

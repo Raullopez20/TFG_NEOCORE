@@ -120,15 +120,16 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         - create: BookingCreateSerializer (con validaciones de disponibilidad).
         - update/partial_update: BookingUpdateSerializer (solo notas).
-        - list: BookingListSerializer (versi\u00f3n ligera sin anidamiento).
+        - list, upcoming, past: BookingSerializer para que el frontend reciba
+          client_info, professional_info y service_info en listados.
         - Resto: BookingSerializer (vista completa con relaciones).
         """
         if self.action == 'create':
             return BookingCreateSerializer
         if self.action in ['update', 'partial_update']:
             return BookingUpdateSerializer
-        if self.action == 'list':
-            return BookingListSerializer
+        if self.action in ['list', 'upcoming', 'past']:
+            return BookingSerializer
         return BookingSerializer
     
     def create(self, request, *args, **kwargs):
@@ -392,7 +393,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             status__in=[Booking.Status.PENDING, Booking.Status.CONFIRMED]
         ).order_by('start_datetime')
         
-        serializer = BookingListSerializer(queryset, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
@@ -408,5 +409,5 @@ class BookingViewSet(viewsets.ModelViewSet):
             end_datetime__lt=timezone.now()
         ).order_by('-start_datetime')
         
-        serializer = BookingListSerializer(queryset, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
