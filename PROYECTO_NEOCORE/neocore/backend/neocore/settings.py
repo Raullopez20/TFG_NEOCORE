@@ -53,7 +53,41 @@ DEBUG = env('DEBUG')
 
 # Lista de hosts/dominios permitidos para servir la aplicación.
 # Protege contra ataques de tipo HTTP Host header.
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', 'web'])
+def _extract_host(value: str) -> str:
+    """Extrae el host (sin esquema ni puerto) desde una URL/host."""
+    candidate = (value or '').strip()
+    if not candidate:
+        return ''
+    if '://' in candidate:
+        parsed = urlparse(candidate)
+        return (parsed.hostname or '').strip()
+    return candidate.split(':', 1)[0].strip()
+
+
+def _build_allowed_hosts() -> list[str]:
+    defaults = [
+        'localhost',
+        '127.0.0.1',
+        'web',
+        'api.neocoree.xyz',
+        'neocoree.xyz',
+        'www.neocoree.xyz',
+    ]
+    configured = env.list('ALLOWED_HOSTS', default=[])
+    inferred = [
+        env('BACKEND_PUBLIC_URL', default=''),
+        env('NEXT_PUBLIC_DOMAIN', default=''),
+    ]
+
+    hosts: list[str] = []
+    for item in [*defaults, *configured, *inferred]:
+        host = _extract_host(item)
+        if host and host not in hosts:
+            hosts.append(host)
+    return hosts
+
+
+ALLOWED_HOSTS = _build_allowed_hosts()
 
 # ============================================================================
 # APLICACIONES INSTALADAS
