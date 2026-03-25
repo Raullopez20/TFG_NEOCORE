@@ -18,6 +18,7 @@ la librería django-environ para mantener la seguridad.
 import os
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import urlparse
 
 import environ
 
@@ -365,10 +366,42 @@ SOCIALACCOUNT_PROVIDERS = {
 # CORS controla qué orígenes (dominios) pueden hacer peticiones a la API.
 # Esto es necesario porque el frontend (Next.js en localhost:3000) y el
 # backend (Django en localhost:8000) corren en puertos diferentes.
-CORS_ALLOWED_ORIGINS = env.list(
-    'CORS_ALLOWED_ORIGINS',
-    default=['http://localhost:3000', 'http://127.0.0.1:3000']
-)
+def _normalize_origin(url: str) -> str:
+    """Normaliza una URL/origen y devuelve solo esquema+host(+puerto)."""
+    value = (url or '').strip().rstrip('/')
+    if not value:
+        return ''
+    if not value.startswith(('http://', 'https://')):
+        value = f'https://{value}'
+    parsed = urlparse(value)
+    if not parsed.scheme or not parsed.netloc:
+        return ''
+    return f'{parsed.scheme}://{parsed.netloc}'
+
+
+def _build_frontend_origins() -> list[str]:
+    """Construye una lista de orígenes permitidos para frontend."""
+    defaults = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://neocoree.xyz',
+        'https://www.neocoree.xyz',
+    ]
+    configured = env.list('CORS_ALLOWED_ORIGINS', default=[])
+    inferred = [
+        env('NEXT_PUBLIC_DOMAIN', default=''),
+        env('FRONTEND_URL', default=''),
+    ]
+
+    origins: list[str] = []
+    for item in [*defaults, *configured, *inferred]:
+        normalized = _normalize_origin(item)
+        if normalized and normalized not in origins:
+            origins.append(normalized)
+    return origins
+
+
+CORS_ALLOWED_ORIGINS = _build_frontend_origins()
 # Permitir envío de cookies y credenciales en peticiones cross-origin
 CORS_ALLOW_CREDENTIALS = True
 # En desarrollo se permiten todos los orígenes para facilitar las pruebas
@@ -400,9 +433,12 @@ CORS_ALLOWED_METHODS = [
 # ============================================================================
 # Configuración de protección CSRF para prevenir ataques de falsificación
 # de peticiones entre sitios.
-CSRF_TRUSTED_ORIGINS = env.list(
-    'CSRF_TRUSTED_ORIGINS',
-    default=['http://localhost:3000', 'http://127.0.0.1:3000']
+CSRF_TRUSTED_ORIGINS = list(
+    {
+        *_build_frontend_origins(),
+        _normalize_origin(env('BACKEND_PUBLIC_URL', default='')),
+        _normalize_origin('https://api.neocoree.xyz'),
+    }
 )
 CSRF_COOKIE_HTTPONLY = False      # Permitir acceso a la cookie CSRF desde JavaScript
 CSRF_USE_SESSIONS = False         # Almacenar el token CSRF en cookie, no en sesión

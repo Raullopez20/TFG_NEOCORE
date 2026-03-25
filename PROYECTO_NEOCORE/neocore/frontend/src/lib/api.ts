@@ -172,6 +172,11 @@ export const authAPI = {
     return response.data;
   },
 
+  requestPasswordReset: async (email: string) => {
+    const response = await api.post('/api/auth/password/reset/', { email });
+    return response.data;
+  },
+
   updateProfile: async (data: Partial<User>) => {
     const response = await api.patch('/api/auth/users/update_me/', data);
     return response.data;
