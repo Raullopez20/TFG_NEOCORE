@@ -112,7 +112,7 @@ docker-compose exec web python manage.py seed_data
 | Profesional (Fisioterapia) | maria.garcia@neocore.com | professional123 |
 | Profesional (Nutrición) | juan.lopez@neocore.com | professional123 |
 | Cliente | pedro.sanchez@example.com | client123 |
-| Cliente | juan.perez@example.com | cliente123
+| Cliente | laura.fernandez@example.com | client123
 
 ## 🎯 Uso del Sistema
 

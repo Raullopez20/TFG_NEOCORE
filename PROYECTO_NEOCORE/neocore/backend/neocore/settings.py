@@ -146,19 +146,27 @@ WSGI_APPLICATION = 'neocore.wsgi.application'
 # ============================================================================
 # BASE DE DATOS
 # ============================================================================
-# Configuración de PostgreSQL como motor de base de datos principal.
-# Los parámetros de conexión se obtienen del archivo .env para mantener
-# las credenciales fuera del código fuente.
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('POSTGRES_DB'),        # Nombre de la base de datos
-        'USER': env('POSTGRES_USER'),      # Usuario de PostgreSQL
-        'PASSWORD': env('POSTGRES_PASSWORD'), # Contraseña del usuario
-        'HOST': env('POSTGRES_HOST'),      # Host del servidor (ej: 'db' en Docker)
-        'PORT': env('POSTGRES_PORT'),      # Puerto (por defecto 5432)
+# Soporta dos modos de configuración:
+#   1) DATABASE_URL (recomendado en PaaS como Railway/Render/Fly + Neon)
+#   2) Variables POSTGRES_* (útil en Docker local)
+# Si existe DATABASE_URL, se prioriza automáticamente.
+DATABASE_URL = env('DATABASE_URL', default='')
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': env.db('DATABASE_URL')
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('POSTGRES_DB'),
+            'USER': env('POSTGRES_USER'),
+            'PASSWORD': env('POSTGRES_PASSWORD'),
+            'HOST': env('POSTGRES_HOST'),
+            'PORT': env('POSTGRES_PORT'),
+        }
+    }
 
 # ============================================================================
 # VALIDACIÓN DE CONTRASEÑAS
