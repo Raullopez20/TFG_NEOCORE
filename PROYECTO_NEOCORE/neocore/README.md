@@ -167,6 +167,60 @@ docker-compose exec web pytest -m unit
 docker-compose exec frontend npm run test:e2e
 ```
 
+## ✅ Intermodular Servidor (completado)
+
+Se han implementado los tres bloques solicitados:
+
+### Actividad 1 - Protección de vistas MVC (CBV)
+
+- Pública (anónimo/autenticado): `/api/auth/intermodular/mvc/public/`
+- Solo autenticado: `/api/auth/intermodular/mvc/auth/`
+- Solo administrador: `/api/auth/intermodular/mvc/admin/`
+
+Todas son Class Based Views y usan mixins de autenticación/autorización.
+
+### Actividad 2 - Protección de vistas API (APIView)
+
+- Pública (AllowAny): `/api/auth/intermodular/api/public/`
+- Solo autenticado (IsAuthenticated): `/api/auth/intermodular/api/auth/`
+- Solo administrador (IsAdmin): `/api/auth/intermodular/api/admin/`
+
+### Actividad 3 - Acceso por token (Djoser + JWT)
+
+- Apps incluidas: `rest_framework.authtoken`, `djoser`
+- URLs añadidas:
+   - `/api/auth/` + `djoser.urls`
+   - `/api/auth/` + `djoser.urls.jwt`
+   - `/api/token/refresh/` + `TokenRefreshView`
+
+#### Prueba obtención de tokens
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/jwt/create/ \
+   -H "Content-Type: application/json" \
+   -d '{
+      "email": "jose@jose.jose",
+      "password": "jose"
+   }'
+```
+
+#### Prueba vista API autenticada
+
+```bash
+curl -X GET http://127.0.0.1:8000/api/auth/intermodular/api/auth/ \
+   -H "Authorization: Bearer tu_token_de_acceso"
+```
+
+#### Prueba refresh token
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/token/refresh/ \
+   -H "Content-Type: application/json" \
+   -d '{
+      "refresh": "tu_refresh_token"
+   }'
+```
+
 ## 📋 Comandos Útiles (Makefile)
 
 ```bash

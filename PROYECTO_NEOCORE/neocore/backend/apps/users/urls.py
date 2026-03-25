@@ -32,6 +32,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
 from .views import UserViewSet
+from .intermodular_views import (
+    PublicDashboardView,
+    AuthenticatedDashboardView,
+    AdminDashboardView,
+    PublicStatusAPIView,
+    AuthenticatedUserAPIView,
+    AdminOnlyAPIView,
+)
 
 
 @api_view(['GET'])
@@ -56,6 +64,16 @@ router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
+    # --- Intermodular MVC (CBV con mixins de autenticación/autorización) ---
+    path('intermodular/mvc/public/', PublicDashboardView.as_view(), name='intermodular_mvc_public'),
+    path('intermodular/mvc/auth/', AuthenticatedDashboardView.as_view(), name='intermodular_mvc_auth'),
+    path('intermodular/mvc/admin/', AdminDashboardView.as_view(), name='intermodular_mvc_admin'),
+
+    # --- Intermodular API (APIView con permisos DRF) ---
+    path('intermodular/api/public/', PublicStatusAPIView.as_view(), name='intermodular_api_public'),
+    path('intermodular/api/auth/', AuthenticatedUserAPIView.as_view(), name='intermodular_api_auth'),
+    path('intermodular/api/admin/', AdminOnlyAPIView.as_view(), name='intermodular_api_admin'),
+
     # --- Token CSRF ---
     path('csrf/', csrf_token, name='csrf_token'),
 

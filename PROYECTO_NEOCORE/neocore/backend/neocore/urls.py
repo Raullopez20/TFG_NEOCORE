@@ -21,6 +21,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -59,6 +60,9 @@ urlpatterns = [
     
     # --- Autenticación (login, registro, contraseñas, OAuth) ---
     path('api/auth/', include('apps.users.urls')),
+    path('api/auth/', include('djoser.urls')),
+    path('api/auth/', include('djoser.urls.jwt')),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # --- Endpoints de las apps del proyecto ---
     path('api/', include('apps.services.urls')),      # Servicios ofrecidos

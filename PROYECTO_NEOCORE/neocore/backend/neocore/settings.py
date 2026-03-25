@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',  # Proveedor de autenticación con Google
     'dj_rest_auth',                            # Endpoints REST para autenticación
     'dj_rest_auth.registration',               # Endpoints REST para registro de usuarios
+    'djoser',                                  # Endpoints REST de usuarios y JWT para intermodular
     'django_celery_beat',                      # Programador de tareas periódicas con Celery
     
     # --- Apps propias del proyecto ---

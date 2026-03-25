@@ -11,6 +11,7 @@ dj-database-url==2.1.0
 # Authentication
 django-allauth==0.60.1
 dj-rest-auth==5.0.2
+djoser==2.3.1
 PyJWT==2.8.0
 
 # Celery & Redis
