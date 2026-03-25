@@ -25,11 +25,18 @@ const nextConfig = {
     ],
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiUrl = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiUrl) {
+      return [];
+    }
+
+    const normalizedApiUrl = apiUrl.replace(/\/$/, '');
+
     return [
       {
         source: '/api/:path*',
-        destination: `${apiUrl}/api/:path*`,
+        destination: `${normalizedApiUrl}/api/:path*`,
       },
     ];
   },

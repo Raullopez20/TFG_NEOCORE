@@ -1,6 +1,6 @@
   import axios, { AxiosError } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // Create axios instance
 // Uses the API URL directly; withCredentials is not needed since we use
