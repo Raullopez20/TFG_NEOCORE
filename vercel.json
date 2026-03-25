@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm --prefix PROYECTO_NEOCORE/neocore/frontend install",
+  "buildCommand": "npm --prefix PROYECTO_NEOCORE/neocore/frontend run build",
+  "outputDirectory": "PROYECTO_NEOCORE/neocore/frontend/.next"
+}

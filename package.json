@@ -2,7 +2,7 @@
   "name": "tfg-adelantado-root",
   "private": true,
   "scripts": {
-    "vercel-build": "npm --prefix PROYECTO_NEOCORE/neocore/frontend install && npm --prefix PROYECTO_NEOCORE/neocore/frontend run build && node -e \"const fs=require('fs');const src='PROYECTO_NEOCORE/neocore/frontend/.next';const dst='.next';if(!fs.existsSync(src)){throw new Error('Missing build output: '+src);}fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true});\"",
+    "vercel-build": "npm --prefix PROYECTO_NEOCORE/neocore/frontend install && npm --prefix PROYECTO_NEOCORE/neocore/frontend run build",
     "build": "npm run vercel-build"
   }
 }
