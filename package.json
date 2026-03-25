@@ -1,6 +1,9 @@
 {
   "name": "tfg-adelantado-root",
   "private": true,
+  "devDependencies": {
+    "next": "^16.2.1"
+  },
   "scripts": {
     "vercel-build": "npm --prefix PROYECTO_NEOCORE/neocore/frontend install && npm --prefix PROYECTO_NEOCORE/neocore/frontend run build",
     "build": "npm run vercel-build"
