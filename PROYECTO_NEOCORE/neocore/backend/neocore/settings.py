@@ -66,17 +66,20 @@ def _extract_host(value: str) -> str:
 
 
 def _build_allowed_hosts() -> list[str]:
-    if not DEBUG:
-        return ['neocoree.xyz', 'www.neocoree.xyz']
-
     defaults = [
+        'neocoree.xyz',
+        'www.neocoree.xyz',
+        'api.neocoree.xyz',
+    ]
+
+    if DEBUG:
+        defaults = [
         'localhost',
         '127.0.0.1',
         'web',
-        'api.neocoree.xyz',
-        'neocoree.xyz',
-        'www.neocoree.xyz',
+        *defaults,
     ]
+
     configured = env.list('ALLOWED_HOSTS', default=[])
     inferred = [
         env('BACKEND_PUBLIC_URL', default=''),

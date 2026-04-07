@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { bookingsAPI, Booking } from '@/lib/api';
+import { bookingsAPI, reviewsAPI, Booking, Review } from '@/lib/api';
 import {
   ArrowLeft,
   Calendar,
@@ -16,6 +16,8 @@ import {
   XCircle,
   AlertCircle,
   FileText,
+  Star,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -26,6 +28,11 @@ export default function BookingDetailPage() {
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
+  const [existingReview, setExistingReview] = useState<Review | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   useEffect(() => {
     loadBookingDetails();
@@ -41,10 +48,43 @@ export default function BookingDetailPage() {
 
       const data = await bookingsAPI.get(Number(bookingId));
       setBooking(data);
+
+      // If booking is DONE, try to load the review (if any)
+      if (data.status === 'DONE') {
+        try {
+          const reviews = await reviewsAPI.list({ booking: data.id });
+          if (reviews.length > 0) setExistingReview(reviews[0]);
+        } catch {
+          // Ignore — no review yet is fine
+        }
+      }
     } catch (error) {
       console.error('Error loading booking:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking) return;
+    setReviewError(null);
+    setReviewSubmitting(true);
+    try {
+      const review = await reviewsAPI.create({
+        booking: booking.id,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+      setExistingReview(review);
+    } catch (err: any) {
+      const data = err?.response?.data;
+      if (typeof data === 'string') setReviewError(data);
+      else if (data?.detail) setReviewError(data.detail);
+      else if (data?.non_field_errors) setReviewError(data.non_field_errors.join('. '));
+      else setReviewError('No se pudo enviar la reseña. Inténtalo de nuevo.');
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -292,6 +332,104 @@ export default function BookingDetailPage() {
                     Cancelar Cita
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Review section: visible only if booking is DONE */}
+            {booking.status === 'DONE' && (
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  Tu reseña
+                </h3>
+
+                {existingReview ? (
+                  <div>
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          className={`w-6 h-6 ${
+                            n <= existingReview.rating
+                              ? 'fill-yellow-400 text-yellow-400'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {existingReview.comment && (
+                      <p className="text-gray-700 italic">"{existingReview.comment}"</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Publicada el{' '}
+                      {new Date(existingReview.created_at).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmitReview} className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Comparte tu experiencia con otros pacientes. Tu opinión ayudará a
+                      mejorar nuestro servicio.
+                    </p>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Valoración
+                      </label>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setReviewRating(n)}
+                            className="focus:outline-none"
+                            aria-label={`${n} estrella${n > 1 ? 's' : ''}`}
+                          >
+                            <Star
+                              className={`w-8 h-8 transition-colors ${
+                                n <= reviewRating
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-gray-300 hover:text-yellow-300'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Comentario (opcional)
+                      </label>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        rows={4}
+                        maxLength={2000}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        placeholder="¿Qué tal fue la experiencia?"
+                      />
+                    </div>
+                    {reviewError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-red-700">{reviewError}</p>
+                      </div>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={reviewSubmitting}
+                      className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60"
+                    >
+                      {reviewSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        'Publicar reseña'
+                      )}
+                    </Button>
+                  </form>
+                )}
               </div>
             )}
           </div>

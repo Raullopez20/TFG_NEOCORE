@@ -93,6 +93,21 @@ export interface Professional {
   specialty: string;
   bio: string;
   profile_image?: string;
+  average_rating?: number | null;
+  reviews_count?: number;
+}
+
+export interface Review {
+  id: number;
+  booking: number;
+  rating: number;
+  comment: string;
+  is_visible: boolean;
+  client_name: string;
+  service_name: string;
+  professional_id: number;
+  professional_name: string;
+  created_at: string;
 }
 
 export interface Booking {
@@ -319,6 +334,23 @@ export const availabilityAPI = {
 
   deleteTimeOff: async (id: number): Promise<void> => {
     await api.delete(`/api/availability/time-off/${id}/`);
+  },
+};
+
+// Reviews API
+export const reviewsAPI = {
+  list: async (params?: { professional?: number; booking?: number }): Promise<Review[]> => {
+    const response = await api.get('/api/reviews/', { params });
+    return response.data.results || response.data;
+  },
+
+  create: async (data: {
+    booking: number;
+    rating: number;
+    comment?: string;
+  }): Promise<Review> => {
+    const response = await api.post('/api/reviews/', data);
+    return response.data;
   },
 };
 

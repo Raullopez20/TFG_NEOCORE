@@ -77,11 +77,14 @@ class ProfessionalSerializer(serializers.ModelSerializer):
 
     Expone únicamente la información relevante que los clientes necesitan
     ver al navegar el catálogo de profesionales: nombre, especialidad,
-    biografía e imagen de perfil. No expone datos sensibles como email o teléfono.
+    biografía e imagen de perfil, además de la valoración media calculada
+    a partir de las reseñas visibles de sus citas completadas.
     """
-    
+
     full_name = serializers.CharField(source='get_full_name', read_only=True)
-    
+    average_rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -90,7 +93,25 @@ class ProfessionalSerializer(serializers.ModelSerializer):
             'specialty',
             'bio',
             'profile_image',
+            'average_rating',
+            'reviews_count',
         ]
+
+    def _visible_reviews_qs(self, obj):
+        # Import local para evitar dependencia circular bookings <-> users
+        from apps.bookings.models import Review
+        return Review.objects.filter(
+            booking__professional_id=obj.id,
+            is_visible=True,
+        )
+
+    def get_average_rating(self, obj):
+        from django.db.models import Avg
+        agg = self._visible_reviews_qs(obj).aggregate(avg=Avg('rating'))
+        return round(agg['avg'], 2) if agg['avg'] is not None else None
+
+    def get_reviews_count(self, obj):
+        return self._visible_reviews_qs(obj).count()
 
 
 class CustomRegisterSerializer(RegisterSerializer):

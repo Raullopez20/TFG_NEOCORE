@@ -37,16 +37,19 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 
-from .models import Booking
+from .models import Booking, Review
 from .serializers import (
     BookingSerializer,
     BookingCreateSerializer,
     BookingUpdateSerializer,
     BookingListSerializer,
     BookingStatsSerializer,
+    ReviewSerializer,
+    ReviewCreateSerializer,
 )
 from apps.users.permissions import IsAdmin
 from bleach import clean
+from rest_framework.permissions import AllowAny
 
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -425,6 +428,84 @@ class BookingViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(
             end_datetime__lt=timezone.now()
         ).order_by('-start_datetime')
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para reseñas de citas completadas.
+
+    Reglas de acceso:
+        - list / retrieve: público (AllowAny). Solo se devuelven reseñas
+          con is_visible=True. Útil para mostrar testimonios en la landing
+          y opiniones en el perfil del profesional.
+        - create: solo el cliente dueño de la booking, y solo si la cita
+          está en estado DONE.
+        - destroy: solo administradores (moderación).
+        - update / partial_update: deshabilitados (las reseñas no se editan).
+
+    Filtros:
+        - ?professional=<id>  → reseñas de un profesional concreto
+        - ?booking=<id>       → reseña de una reserva concreta
+    """
+
+    queryset = Review.objects.select_related(
+        'booking', 'booking__client', 'booking__professional', 'booking__service'
+    ).all()
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['booking']
+    ordering_fields = ['created_at', 'rating']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Review.objects.none()
+        qs = Review.objects.select_related(
+            'booking', 'booking__client', 'booking__professional', 'booking__service'
+        )
+        # Lecturas públicas: solo reseñas visibles
+        if self.action in ['list', 'retrieve']:
+            user = self.request.user if self.request.user.is_authenticated else None
+            if not (user and (user.is_staff or getattr(user, 'is_admin_role', False))):
+                qs = qs.filter(is_visible=True)
+        # Filtro adicional por profesional (no es campo directo del Review)
+        professional_id = self.request.query_params.get('professional')
+        if professional_id:
+            qs = qs.filter(booking__professional_id=professional_id)
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ReviewCreateSerializer
+        return ReviewSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        if self.action == 'destroy':
+            return [IsAdmin()]
+        # create, update, partial_update
+        return [IsAuthenticated()]
+
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {'detail': 'Las reseñas no se pueden editar.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response(
+            {'detail': 'Las reseñas no se pueden editar.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        review = serializer.save()
+        return Response(
+            ReviewSerializer(review).data,
+            status=status.HTTP_201_CREATED,
+        )

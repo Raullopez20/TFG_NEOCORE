@@ -17,6 +17,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from encrypted_model_fields.fields import EncryptedTextField
 
@@ -190,3 +191,59 @@ class Booking(models.Model):
     def can_be_rejected(self):
         """Determina si la reserva puede ser rechazada (solo si está pendiente)."""
         return self.status == self.Status.PENDING
+
+    def can_be_reviewed(self):
+        """Determina si la reserva puede recibir una reseña (solo si está completada)."""
+        return self.status == self.Status.DONE and not hasattr(self, 'review')
+
+
+class Review(models.Model):
+    """
+    Reseña que un cliente deja sobre una cita ya completada.
+
+    Una reseña pertenece a una sola Booking (relación 1:1) y solo puede
+    crearse cuando la cita está en estado DONE. La puntuación va de 1 a 5
+    estrellas. Las reseñas son visibles públicamente por defecto, pero un
+    administrador puede ocultarlas marcando is_visible=False (moderación).
+    """
+
+    booking = models.OneToOneField(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name='review',
+    )
+    rating = models.PositiveSmallIntegerField(
+        _('rating'),
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text=_('Valoración de 1 a 5 estrellas'),
+    )
+    comment = models.TextField(_('comment'), blank=True, max_length=2000)
+    is_visible = models.BooleanField(
+        _('visible'),
+        default=True,
+        help_text=_('Si está oculto, no aparecerá en perfiles públicos'),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('review')
+        verbose_name_plural = _('reviews')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_visible', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"Review #{self.pk} · {self.rating}★ · booking={self.booking_id}"
+
+    def clean(self):
+        """Valida que la cita esté completada antes de permitir la reseña."""
+        if self.booking_id and self.booking.status != Booking.Status.DONE:
+            raise ValidationError(
+                _('Solo se pueden reseñar citas completadas.')
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
