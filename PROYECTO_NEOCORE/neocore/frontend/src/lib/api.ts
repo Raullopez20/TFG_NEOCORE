@@ -321,3 +321,16 @@ export const availabilityAPI = {
     await api.delete(`/api/availability/time-off/${id}/`);
   },
 };
+
+// Contact API
+export const contactAPI = {
+  send: async (data: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }): Promise<{ detail: string }> => {
+    const response = await api.post('/api/contact/', data);
+    return response.data;
+  },
+};

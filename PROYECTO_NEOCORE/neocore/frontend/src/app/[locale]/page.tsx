@@ -1,10 +1,53 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Calendar, Users, Shield, Sparkles, Heart, Star, CheckCircle } from 'lucide-react';
+import { ArrowRight, Calendar, Users, Shield, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { servicesAPI, professionalsAPI, Service, Professional } from '@/lib/api';
+
+const FALLBACK_SERVICE_IMAGES: Record<string, string> = {
+  fisio: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop',
+  nutri: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=300&fit=crop',
+  entrena: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=300&fit=crop',
+  psic: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop',
+  default: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400&h=300&fit=crop',
+};
+
+function pickServiceImage(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [key, url] of Object.entries(FALLBACK_SERVICE_IMAGES)) {
+    if (key !== 'default' && lower.includes(key)) return url;
+  }
+  return FALLBACK_SERVICE_IMAGES.default;
+}
 
 export default function HomePage() {
+  const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
+  const [professionalsCount, setProfessionalsCount] = useState<number | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [services, professionals] = await Promise.all([
+          servicesAPI.list().catch(() => [] as Service[]),
+          professionalsAPI.list().catch(() => [] as Professional[]),
+        ]);
+        if (cancelled) return;
+        setFeaturedServices(services.filter((s) => s.is_active !== false).slice(0, 4));
+        setProfessionalsCount(professionals.length);
+      } finally {
+        if (!cancelled) setDataLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -92,28 +135,42 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <SpecialtyCard
-              title="Fisioterapia"
-              description="Rehabilitación y tratamiento de lesiones"
-              image="https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop"
-            />
-            <SpecialtyCard
-              title="Nutrición"
-              description="Planes alimenticios personalizados"
-              image="https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=300&fit=crop"
-            />
-            <SpecialtyCard
-              title="Entrenamiento"
-              description="Programas de ejercicio a medida"
-              image="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=300&fit=crop"
-            />
-            <SpecialtyCard
-              title="Bienestar Mental"
-              description="Apoyo psicológico y emocional"
-              image="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop"
-            />
-          </div>
+          {dataLoading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse"
+                >
+                  <div className="h-48 bg-gray-200" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-5 bg-gray-200 rounded w-2/3" />
+                    <div className="h-4 bg-gray-100 rounded w-full" />
+                    <div className="h-4 bg-gray-100 rounded w-5/6" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : featuredServices.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredServices.map((svc) => (
+                <Link key={svc.id} href={`/es/services/${svc.id}`}>
+                  <SpecialtyCard
+                    title={svc.name}
+                    description={
+                      svc.description?.slice(0, 90) +
+                      ((svc.description?.length || 0) > 90 ? '…' : '')
+                    }
+                    image={svc.image || pickServiceImage(svc.name)}
+                  />
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              Pronto añadiremos nuestros servicios. Vuelve en unos días.
+            </div>
+          )}
 
           <div className="text-center mt-12">
             <Link href="/es/services">
@@ -135,7 +192,9 @@ export default function HomePage() {
               <p className="text-gray-600 text-lg">Pacientes Atendidos</p>
             </div>
             <div>
-              <div className="text-5xl font-bold text-blue-600 mb-2">50+</div>
+              <div className="text-5xl font-bold text-blue-600 mb-2">
+                {professionalsCount !== null ? `${professionalsCount}+` : '—'}
+              </div>
               <p className="text-gray-600 text-lg">Profesionales</p>
             </div>
             <div>

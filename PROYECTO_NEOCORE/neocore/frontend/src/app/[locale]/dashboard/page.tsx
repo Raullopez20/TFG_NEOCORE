@@ -9,11 +9,13 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
   TrendingUp,
   Users,
-  Activity,
   Plus,
+  CalendarClock,
+  Settings,
+  ShieldCheck,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -68,32 +70,51 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = [
-    {
-      name: 'Próximas Citas',
-      value: bookings.length,
-      icon: Calendar,
-      color: 'blue',
-    },
-    {
-      name: 'Pendientes',
-      value: bookings.filter((b) => b.status === 'PENDING').length,
-      icon: Clock,
-      color: 'yellow',
-    },
-    {
-      name: 'Confirmadas',
-      value: bookings.filter((b) => b.status === 'CONFIRMED').length,
-      icon: CheckCircle,
-      color: 'green',
-    },
-    {
-      name: 'Total',
-      value: bookings.length,
-      icon: TrendingUp,
-      color: 'purple',
-    },
-  ];
+  const isProfessional = user?.role === 'PROFESSIONAL';
+  const isAdmin = user?.role === 'ADMIN';
+
+  const pendingCount = bookings.filter((b) => b.status === 'PENDING').length;
+  const confirmedCount = bookings.filter((b) => b.status === 'CONFIRMED').length;
+
+  // Today's bookings (for professionals)
+  const todayStr = new Date().toDateString();
+  const todayCount = bookings.filter(
+    (b) => new Date(b.start_datetime).toDateString() === todayStr
+  ).length;
+
+  const stats = isProfessional
+    ? [
+        { name: 'Hoy', value: todayCount, icon: CalendarClock, color: 'blue' },
+        { name: 'Pendientes de confirmar', value: pendingCount, icon: Clock, color: 'yellow' },
+        { name: 'Confirmadas próximas', value: confirmedCount, icon: CheckCircle, color: 'green' },
+        { name: 'Total próximas', value: bookings.length, icon: TrendingUp, color: 'purple' },
+      ]
+    : [
+        { name: 'Próximas Citas', value: bookings.length, icon: Calendar, color: 'blue' },
+        { name: 'Pendientes', value: pendingCount, icon: Clock, color: 'yellow' },
+        { name: 'Confirmadas', value: confirmedCount, icon: CheckCircle, color: 'green' },
+        { name: 'Total', value: bookings.length, icon: TrendingUp, color: 'purple' },
+      ];
+
+  const handleConfirm = async (id: number) => {
+    try {
+      await bookingsAPI.confirm(id);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: 'CONFIRMED' } : b))
+      );
+    } catch (err) {
+      console.error('Error confirming booking:', err);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      await bookingsAPI.reject(id);
+      setBookings((prev) => prev.filter((b) => b.id !== id));
+    } catch (err) {
+      console.error('Error rejecting booking:', err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -160,35 +181,93 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Link href="/es/services">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Nuevo Servicio</h3>
-                <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform" />
-              </div>
-              <p className="text-blue-100">
-                Reserva una nueva cita con nuestros profesionales
-              </p>
-            </div>
-          </Link>
+          {isProfessional ? (
+            <>
+              <Link href="/es/bookings">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold">Mi Agenda</h3>
+                    <CalendarClock className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-blue-100">
+                    Revisa y gestiona tus citas próximas.
+                  </p>
+                </div>
+              </Link>
 
-          <Link href="/es/professionals">
-            <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Ver Profesionales</h3>
-                <Users className="w-8 h-8 group-hover:scale-110 transition-transform" />
-              </div>
-              <p className="text-purple-100">
-                Explora nuestro equipo de expertos certificados
-              </p>
-            </div>
-          </Link>
+              <Link href="/es/profile">
+                <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold">Mi Perfil</h3>
+                    <Settings className="w-8 h-8 group-hover:rotate-45 transition-transform" />
+                  </div>
+                  <p className="text-purple-100">
+                    Actualiza tu bio, especialidad y disponibilidad.
+                  </p>
+                </div>
+              </Link>
+            </>
+          ) : isAdmin ? (
+            <>
+              <Link href="/es/bookings">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold">Todas las Reservas</h3>
+                    <CalendarClock className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-blue-100">
+                    Supervisa las citas del sistema.
+                  </p>
+                </div>
+              </Link>
+
+              <Link href="/es/professionals">
+                <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold">Profesionales</h3>
+                    <ShieldCheck className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-purple-100">
+                    Gestiona el equipo y sus especialidades.
+                  </p>
+                </div>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/es/services">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold">Reservar Cita</h3>
+                    <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform" />
+                  </div>
+                  <p className="text-blue-100">
+                    Reserva una nueva cita con nuestros profesionales.
+                  </p>
+                </div>
+              </Link>
+
+              <Link href="/es/professionals">
+                <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold">Ver Profesionales</h3>
+                    <Users className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <p className="text-purple-100">
+                    Explora nuestro equipo de expertos certificados.
+                  </p>
+                </div>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Upcoming Bookings */}
         <div className="bg-white rounded-xl shadow-md p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Próximas Citas</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isProfessional ? 'Tu Agenda Próxima' : 'Próximas Citas'}
+            </h2>
             <Link href="/es/bookings">
               <Button className="bg-blue-600 hover:bg-blue-700">Ver Todas</Button>
             </Link>
@@ -198,21 +277,33 @@ export default function DashboardPage() {
             <div className="text-center py-12">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No tienes citas programadas
+                {isProfessional
+                  ? 'No tienes citas próximas'
+                  : 'No tienes citas programadas'}
               </h3>
               <p className="text-gray-600 mb-4">
-                ¡Agenda tu primera cita con nosotros!
+                {isProfessional
+                  ? 'Cuando los clientes reserven contigo, aparecerán aquí.'
+                  : '¡Agenda tu primera cita con nosotros!'}
               </p>
-              <Link href="/es/services">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  Explorar Servicios
-                </Button>
-              </Link>
+              {!isProfessional && (
+                <Link href="/es/services">
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    Explorar Servicios
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
               {bookings.slice(0, 5).map((booking) => (
-                <BookingCard key={booking.id} booking={booking} />
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  isProfessional={isProfessional}
+                  onConfirm={handleConfirm}
+                  onReject={handleReject}
+                />
               ))}
             </div>
           )}
@@ -222,7 +313,18 @@ export default function DashboardPage() {
   );
 }
 
-function BookingCard({ booking }: { booking: Booking }) {
+function BookingCard({
+  booking,
+  isProfessional,
+  onConfirm,
+  onReject,
+}: {
+  booking: Booking;
+  isProfessional: boolean;
+  onConfirm: (id: number) => void | Promise<void>;
+  onReject: (id: number) => void | Promise<void>;
+}) {
+  const [actionLoading, setActionLoading] = useState<null | 'confirm' | 'reject'>(null);
   const statusConfig = {
     PENDING: {
       color: 'yellow',
@@ -263,11 +365,30 @@ function BookingCard({ booking }: { booking: Booking }) {
 
   const config = statusConfig[booking.status as keyof typeof statusConfig];
   const Icon = config.icon;
+  const canAct = isProfessional && booking.status === 'PENDING';
+
+  const runConfirm = async () => {
+    setActionLoading('confirm');
+    try {
+      await onConfirm(booking.id);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const runReject = async () => {
+    setActionLoading('reject');
+    try {
+      await onReject(booking.id);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex-1 min-w-[220px]">
           <div className="flex items-center gap-3 mb-2">
             <h4 className="font-semibold text-gray-900">
               {booking.service_info?.name || 'Servicio'}
@@ -279,7 +400,7 @@ function BookingCard({ booking }: { booking: Booking }) {
               {config.label}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               {new Date(booking.start_datetime).toLocaleDateString('es-ES', {
@@ -295,13 +416,47 @@ function BookingCard({ booking }: { booking: Booking }) {
                 minute: '2-digit',
               })}
             </div>
+            {isProfessional && booking.client_info && (
+              <div className="flex items-center gap-1">
+                <Users className="w-4 h-4" />
+                {booking.client_info.full_name || booking.client_info.email}
+              </div>
+            )}
           </div>
         </div>
-        <Link href={`/es/bookings/${booking.id}`}>
-          <Button className="bg-gray-100 hover:bg-gray-200 text-gray-900">
-            Ver Detalles
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {canAct && (
+            <>
+              <Button
+                onClick={runConfirm}
+                disabled={actionLoading !== null}
+                className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-60"
+              >
+                {actionLoading === 'confirm' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Confirmar'
+                )}
+              </Button>
+              <Button
+                onClick={runReject}
+                disabled={actionLoading !== null}
+                className="bg-red-100 hover:bg-red-200 text-red-700 disabled:opacity-60"
+              >
+                {actionLoading === 'reject' ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Rechazar'
+                )}
+              </Button>
+            </>
+          )}
+          <Link href={`/es/bookings/${booking.id}`}>
+            <Button className="bg-gray-100 hover:bg-gray-200 text-gray-900">
+              Ver Detalles
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

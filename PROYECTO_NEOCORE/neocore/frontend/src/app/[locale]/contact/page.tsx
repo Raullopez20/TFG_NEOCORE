@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { contactAPI } from '@/lib/api';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -13,15 +14,45 @@ export default function ContactPage() {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aquí iría la lógica para enviar el formulario
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      await contactAPI.send({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+      });
+      setSubmitted(true);
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
-    }, 3000);
+      setTimeout(() => setSubmitted(false), 5000);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const detail = err?.response?.data?.detail;
+      const fieldErrors = err?.response?.data;
+
+      if (status === 429) {
+        setError(detail || 'Has superado el límite de envíos. Intenta de nuevo en una hora.');
+      } else if (status === 400 && fieldErrors && typeof fieldErrors === 'object') {
+        const firstField = Object.keys(fieldErrors).find((k) => k !== 'detail');
+        const firstMsg = firstField
+          ? Array.isArray(fieldErrors[firstField])
+            ? fieldErrors[firstField][0]
+            : String(fieldErrors[firstField])
+          : 'Revisa los datos del formulario.';
+        setError(firstMsg);
+      } else {
+        setError('No se pudo enviar el mensaje. Inténtalo de nuevo más tarde.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -108,6 +139,13 @@ export default function ContactPage() {
               </div>
             )}
 
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
@@ -189,10 +227,20 @@ export default function ContactPage() {
 
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2"
+                disabled={submitting}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Send className="w-5 h-5" />
-                Enviar Mensaje
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Enviar Mensaje
+                  </>
+                )}
               </Button>
             </form>
           </div>

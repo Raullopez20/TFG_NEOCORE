@@ -7,10 +7,12 @@ import {
   servicesAPI,
   professionalsAPI,
   bookingsAPI,
+  availabilityAPI,
   Service,
   Professional,
+  TimeSlot,
 } from '@/lib/api';
-import { ArrowLeft, Calendar, Clock, User, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, User, FileText, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function NewBookingPage() {
@@ -32,9 +34,68 @@ export default function NewBookingPage() {
     notes: '',
   });
 
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  // Fetch available slots whenever professional / service / date change
+  useEffect(() => {
+    const svcId = Number(formData.service);
+    const profId = Number(formData.professional);
+    if (!svcId || !profId || !formData.date) {
+      setAvailableSlots([]);
+      setSlotsError(null);
+      return;
+    }
+    const svc = services.find((s) => s.id === svcId);
+    if (!svc) return;
+
+    let cancelled = false;
+    const fetchSlots = async () => {
+      setSlotsLoading(true);
+      setSlotsError(null);
+      // Clear selected time if date changed
+      setFormData((prev) => ({ ...prev, time: '' }));
+      try {
+        const response = await availabilityAPI.getSlots({
+          professional_id: profId,
+          service_duration: svc.duration_minutes,
+          start_date: formData.date,
+          end_date: formData.date,
+        });
+        if (cancelled) return;
+        const slots = Array.isArray((response as any).slots)
+          ? (response as any).slots
+          : Array.isArray(response)
+          ? (response as any)
+          : [];
+        setAvailableSlots(slots);
+        if (slots.length === 0) {
+          setSlotsError('No hay horas disponibles para ese día. Prueba otra fecha.');
+        }
+      } catch (err: any) {
+        if (cancelled) return;
+        setAvailableSlots([]);
+        setSlotsError('No se pudieron cargar las horas disponibles.');
+      } finally {
+        if (!cancelled) setSlotsLoading(false);
+      }
+    };
+    fetchSlots();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.service, formData.professional, formData.date, services]);
+
+  const formatSlotTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  };
 
   const loadData = async () => {
     try {
@@ -84,8 +145,14 @@ export default function NewBookingPage() {
         setSubmitting(false);
         return;
       }
+      if (!formData.time) {
+        setError('Por favor selecciona una hora disponible');
+        setSubmitting(false);
+        return;
+      }
 
-      const startDatetime = new Date(`${formData.date}T${formData.time}`);
+      // formData.time now contains the ISO start_datetime from the picked slot
+      const startDatetime = new Date(formData.time);
       const endDatetime = new Date(
         startDatetime.getTime() + svc.duration_minutes * 60000
       );
@@ -197,36 +264,69 @@ export default function NewBookingPage() {
                   </select>
                 </div>
 
-                {/* Date and Time */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                      <Calendar className="w-4 h-4" />
-                      Fecha
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      required
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
+                {/* Date */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                    <Calendar className="w-4 h-4" />
+                    Fecha
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
 
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                      <Clock className="w-4 h-4" />
-                      Hora
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.time}
-                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
+                {/* Available Slots */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                    <Clock className="w-4 h-4" />
+                    Hora disponible
+                  </label>
+
+                  {!formData.service || !formData.professional || !formData.date ? (
+                    <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500">
+                      Selecciona servicio, profesional y fecha para ver las horas disponibles.
+                    </div>
+                  ) : slotsLoading ? (
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-2 text-sm text-gray-600">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Buscando horas disponibles...
+                    </div>
+                  ) : slotsError ? (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-sm text-amber-800">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>{slotsError}</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                      {availableSlots.map((slot) => {
+                        const timeStr = formatSlotTime(slot.start_datetime);
+                        const isSelected = formData.time === slot.start_datetime;
+                        return (
+                          <button
+                            key={slot.start_datetime}
+                            type="button"
+                            onClick={() =>
+                              setFormData({ ...formData, time: slot.start_datetime })
+                            }
+                            className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                              isSelected
+                                ? 'bg-blue-600 border-blue-600 text-white shadow'
+                                : 'bg-white border-gray-300 text-gray-700 hover:border-blue-500 hover:bg-blue-50'
+                            }`}
+                          >
+                            {timeStr}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Hidden required input so the form won't submit without a slot */}
+                  <input type="hidden" value={formData.time} required readOnly />
                 </div>
 
                 {/* Notes */}
@@ -308,16 +408,18 @@ export default function NewBookingPage() {
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Fecha y Hora</p>
                       <p className="font-semibold text-gray-900">
-                        {new Date(`${formData.date}T${formData.time}`).toLocaleDateString(
-                          'es-ES',
-                          {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                          }
-                        )}
+                        {new Date(formData.time).toLocaleDateString('es-ES', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                        })}
                       </p>
-                      <p className="text-gray-700">{formData.time}</p>
+                      <p className="text-gray-700">
+                        {new Date(formData.time).toLocaleTimeString('es-ES', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
                     </div>
                   )}
                 </div>
