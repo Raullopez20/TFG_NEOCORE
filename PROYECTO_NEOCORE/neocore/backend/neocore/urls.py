@@ -16,9 +16,9 @@ Estructura de la API:
     /api/availability/    -> Gestión de disponibilidad horaria
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
-from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -48,8 +48,10 @@ def health_check(request):
 # DEFINICIÓN DE RUTAS
 # ==========================================================================
 urlpatterns = [
-    # --- Panel de administración ---
-    path('admin/', admin.site.urls),
+    # --- Honeypot para bots en ruta admin por defecto ---
+    path('admin/', include('admin_honeypot.urls', namespace='admin_honeypot')),
+    # --- Panel de administración real en ruta no obvia ---
+    path(settings.ADMIN_PATH, admin.site.urls),
     
     # --- Comprobación de estado ---
     path('api/health/', health_check, name='health-check'),
@@ -63,6 +65,7 @@ urlpatterns = [
     path('api/auth/', include('djoser.urls')),
     path('api/auth/', include('djoser.urls.jwt')),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/', include('apps.notifications.urls')),
     
     # --- Endpoints de las apps del proyecto ---
     path('api/', include('apps.services.urls')),      # Servicios ofrecidos

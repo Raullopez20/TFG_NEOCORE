@@ -18,6 +18,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from encrypted_model_fields.fields import EncryptedTextField
 
 User = get_user_model()
 
@@ -83,20 +84,20 @@ class Booking(models.Model):
     
     # --- Notas adicionales ---
     # Notas del cliente para el profesional (ej: síntomas, preferencias)
-    client_notes = models.TextField(
+    client_notes = EncryptedTextField(
         _('client notes'),
         blank=True,
         help_text=_('Notes from client to professional')
     )
     # Notas internas del profesional (no visibles para el cliente)
-    professional_notes = models.TextField(
+    professional_notes = EncryptedTextField(
         _('professional notes'),
         blank=True,
         help_text=_('Internal notes by professional')
     )
     
     # --- Datos de cancelación/rechazo ---
-    cancellation_reason = models.TextField(
+    cancellation_reason = EncryptedTextField(
         _('cancellation reason'),
         blank=True,
     )

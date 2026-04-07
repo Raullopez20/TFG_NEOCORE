@@ -13,6 +13,8 @@ django-allauth==0.60.1
 dj-rest-auth==5.0.2
 djoser==2.3.1
 PyJWT==2.8.0
+django-axes==6.5.1
+argon2-cffi==23.1.0
 
 # Celery & Redis
 celery==5.3.6
@@ -28,11 +30,18 @@ whitenoise==6.6.0
 djangorestframework-simplejwt==5.3.1
 drf-spectacular==0.27.0
 django-filter==23.5
+django-ratelimit==4.1.0
+django-csp==3.8
+django-bleach==3.1.0
 
 # Utils
 python-dateutil==2.8.2
 pytz==2023.3
 pillow==10.2.0
+django-encrypted-model-fields==0.6.5
+python-json-logger==2.0.7
+python-magic==0.4.27
+django-admin-honeypot-updated-2021==1.2.0
 
 # Testing
 pytest==7.4.4

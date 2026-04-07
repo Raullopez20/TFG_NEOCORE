@@ -16,6 +16,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from bleach import clean
+import re
 
 from .serializers import (
     UserSerializer,
@@ -26,6 +28,7 @@ from .serializers import (
 from .permissions import IsOwnerOrAdmin, IsAdmin
 
 User = get_user_model()
+SPECIALTY_FILTER_RE = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s-]{1,100}$")
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -161,6 +164,10 @@ class UserViewSet(viewsets.ModelViewSet):
         # Filtrar por especialidad si se proporciona el parámetro
         specialty = request.query_params.get('specialty')
         if specialty:
+            specialty = specialty.strip()
+            if not SPECIALTY_FILTER_RE.match(specialty):
+                return Response({'error': 'Filtro de especialidad invalido'}, status=status.HTTP_400_BAD_REQUEST)
+            specialty = clean(specialty, tags=[], attributes={}, strip=True)
             queryset = queryset.filter(specialty__icontains=specialty)
         
         serializer = ProfessionalSerializer(queryset, many=True)

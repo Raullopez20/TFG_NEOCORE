@@ -46,6 +46,7 @@ from .serializers import (
     BookingStatsSerializer,
 )
 from apps.users.permissions import IsAdmin
+from bleach import clean
 
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -146,6 +147,17 @@ class BookingViewSet(viewsets.ModelViewSet):
                 {'error': 'Only clients can create bookings'},
                 status=status.HTTP_403_FORBIDDEN
             )
+
+        last_hour = timezone.now() - timedelta(hours=1)
+        recent_bookings = Booking.objects.filter(
+            client=request.user,
+            created_at__gte=last_hour,
+        ).count()
+        if recent_bookings >= 10:
+            return Response(
+                {'detail': 'Has superado el limite de 10 reservas por hora.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -233,7 +245,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         # Actualizar estado y registrar datos de rechazo
         booking.status = Booking.Status.REJECTED
-        booking.cancellation_reason = request.data.get('reason', '')
+        booking.cancellation_reason = clean(request.data.get('reason', ''), tags=[], attributes={}, strip=True)
         booking.canceled_by = request.user
         booking.canceled_at = timezone.now()
         booking.save()
@@ -269,7 +281,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         # Actualizar estado y registrar datos de cancelaci\u00f3n
         booking.status = Booking.Status.CANCELED
-        booking.cancellation_reason = request.data.get('reason', '')
+        booking.cancellation_reason = clean(request.data.get('reason', ''), tags=[], attributes={}, strip=True)
         booking.canceled_by = request.user
         booking.canceled_at = timezone.now()
         booking.save()
@@ -328,7 +340,12 @@ class BookingViewSet(viewsets.ModelViewSet):
             - Reservas de la \u00faltima semana y \u00faltimo mes.
         """
         # Obtener el rango de d\u00edas desde los query params (por defecto 30)
-        days = int(request.query_params.get('days', 30))
+        try:
+            days = int(request.query_params.get('days', 30))
+        except ValueError:
+            return Response({'error': 'Parametro days invalido'}, status=status.HTTP_400_BAD_REQUEST)
+        if days < 1 or days > 365:
+            return Response({'error': 'Parametro days fuera de rango (1-365)'}, status=status.HTTP_400_BAD_REQUEST)
         start_date = timezone.now() - timedelta(days=days)
         
         bookings = Booking.objects.filter(created_at__gte=start_date)

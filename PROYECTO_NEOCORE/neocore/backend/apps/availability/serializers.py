@@ -9,6 +9,7 @@ Define tres serializadores:
 """
 
 from rest_framework import serializers
+from bleach import clean
 from .models import AvailabilityRule, TimeOff
 
 
@@ -93,6 +94,12 @@ class TimeOffSerializer(serializers.ModelSerializer):
                     "End date must be after or equal to start date"
                 )
         return attrs
+
+    def validate_reason(self, value):
+        value = (value or '').strip()
+        if len(value) > 500:
+            raise serializers.ValidationError('El motivo no puede superar 500 caracteres.')
+        return clean(value, tags=[], attributes={}, strip=True)
 
 
 class SlotSerializer(serializers.Serializer):

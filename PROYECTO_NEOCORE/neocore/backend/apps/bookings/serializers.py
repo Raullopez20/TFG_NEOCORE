@@ -12,6 +12,7 @@ Define múltiples serializadores según el contexto de uso:
 from rest_framework import serializers
 from django.utils import timezone
 from datetime import timedelta
+from bleach import clean
 
 from .models import Booking
 from apps.users.serializers import UserSerializer
@@ -97,6 +98,12 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             'end_datetime',
             'client_notes',
         ]
+
+    def validate_client_notes(self, value):
+        value = (value or '').strip()
+        if len(value) > 1000:
+            raise serializers.ValidationError('Las notas no pueden superar los 1000 caracteres.')
+        return clean(value, tags=[], attributes={}, strip=True)
     
     def validate(self, attrs):
         """
@@ -155,6 +162,18 @@ class BookingUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ['client_notes', 'professional_notes']
+
+    def validate_client_notes(self, value):
+        value = (value or '').strip()
+        if len(value) > 1000:
+            raise serializers.ValidationError('Las notas no pueden superar los 1000 caracteres.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_professional_notes(self, value):
+        value = (value or '').strip()
+        if len(value) > 2000:
+            raise serializers.ValidationError('Las notas profesionales no pueden superar los 2000 caracteres.')
+        return clean(value, tags=[], attributes={}, strip=True)
     
     def validate(self, attrs):
         """Verifica que los clientes no intenten modificar las notas del profesional."""

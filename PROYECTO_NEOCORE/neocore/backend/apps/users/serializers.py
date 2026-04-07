@@ -15,9 +15,26 @@ Clases incluidas:
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.core.validators import EmailValidator, RegexValidator
+from django.utils import timezone
+from bleach import clean
+import re
 from dj_rest_auth.registration.serializers import RegisterSerializer
 
+try:
+    import magic
+except Exception:  # pragma: no cover
+    magic = None
+
 User = get_user_model()
+
+NAME_REGEX = re.compile(r"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s'-]{2,150}$")
+SPANISH_PHONE_VALIDATOR = RegexValidator(
+    regex=r'^(?:\+34|0034|34)?[6-9]\d{8}$',
+    message='Formato de telefono espanol invalido.',
+)
+ALLOWED_IMAGE_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+MAX_IMAGE_SIZE = 2 * 1024 * 1024
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -46,10 +63,12 @@ class UserSerializer(serializers.ModelSerializer):
             'specialty',
             'bio',
             'profile_image',
+            'gdpr_consent',
+            'gdpr_consent_at',
             'is_active',
             'created_at',
         ]
-        read_only_fields = ['id', 'created_at', 'role']
+        read_only_fields = ['id', 'created_at', 'role', 'gdpr_consent', 'gdpr_consent_at']
 
 
 class ProfessionalSerializer(serializers.ModelSerializer):
@@ -87,6 +106,35 @@ class CustomRegisterSerializer(RegisterSerializer):
     first_name = serializers.CharField(required=True, max_length=150)
     last_name = serializers.CharField(required=True, max_length=150)
     phone = serializers.CharField(required=False, max_length=20)
+    gdpr_consent = serializers.BooleanField(required=True)
+
+    def validate_email(self, value):
+        EmailValidator()(value)
+        return value.lower().strip()
+
+    def validate_first_name(self, value):
+        value = value.strip()
+        if not NAME_REGEX.match(value):
+            raise serializers.ValidationError('El nombre contiene caracteres no permitidos.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_last_name(self, value):
+        value = value.strip()
+        if not NAME_REGEX.match(value):
+            raise serializers.ValidationError('Los apellidos contienen caracteres no permitidos.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_phone(self, value):
+        normalized = (value or '').replace(' ', '')
+        if not normalized:
+            return ''
+        SPANISH_PHONE_VALIDATOR(normalized)
+        return normalized
+
+    def validate_gdpr_consent(self, value):
+        if value is not True:
+            raise serializers.ValidationError('Debes aceptar el consentimiento RGPD para registrarte.')
+        return value
     
     def get_cleaned_data(self):
         """Obtiene los datos validados incluyendo los campos personalizados."""
@@ -94,6 +142,7 @@ class CustomRegisterSerializer(RegisterSerializer):
         data['first_name'] = self.validated_data.get('first_name', '')
         data['last_name'] = self.validated_data.get('last_name', '')
         data['phone'] = self.validated_data.get('phone', '')
+        data['gdpr_consent'] = self.validated_data.get('gdpr_consent', False)
         return data
     
     def save(self, request):
@@ -105,6 +154,8 @@ class CustomRegisterSerializer(RegisterSerializer):
         user.first_name = self.cleaned_data.get('first_name')
         user.last_name = self.cleaned_data.get('last_name')
         user.phone = self.cleaned_data.get('phone', '')
+        user.gdpr_consent = bool(self.cleaned_data.get('gdpr_consent'))
+        user.gdpr_consent_at = timezone.now() if user.gdpr_consent else None
         user.role = User.Role.CLIENT
         user.save()
         return user
@@ -130,6 +181,51 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'bio',
             'profile_image',
         ]
+
+    def validate_first_name(self, value):
+        value = value.strip()
+        if not NAME_REGEX.match(value):
+            raise serializers.ValidationError('El nombre contiene caracteres no permitidos.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_last_name(self, value):
+        value = value.strip()
+        if not NAME_REGEX.match(value):
+            raise serializers.ValidationError('Los apellidos contienen caracteres no permitidos.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_phone(self, value):
+        normalized = (value or '').replace(' ', '')
+        if not normalized:
+            return ''
+        SPANISH_PHONE_VALIDATOR(normalized)
+        return normalized
+
+    def validate_specialty(self, value):
+        value = (value or '').strip()
+        if len(value) > 100:
+            raise serializers.ValidationError('La especialidad supera la longitud maxima permitida.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_bio(self, value):
+        value = (value or '').strip()
+        if len(value) > 2500:
+            raise serializers.ValidationError('La biografia no puede superar 2500 caracteres.')
+        return clean(value, tags=[], attributes={}, strip=True)
+
+    def validate_profile_image(self, value):
+        if value.size > MAX_IMAGE_SIZE:
+            raise serializers.ValidationError('La imagen supera el tamano maximo permitido de 2MB.')
+        if not value.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+            raise serializers.ValidationError('Extension de imagen no permitida.')
+
+        current_pos = value.file.tell()
+        header_bytes = value.file.read(2048)
+        value.file.seek(current_pos)
+        detected = magic.from_buffer(header_bytes, mime=True) if magic else value.content_type
+        if detected not in ALLOWED_IMAGE_TYPES:
+            raise serializers.ValidationError('El tipo real del archivo no corresponde a una imagen permitida.')
+        return value
     
     def validate(self, attrs):
         """
@@ -173,6 +269,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'is_active',
             'is_staff',
             'is_superuser',
+            'gdpr_consent',
+            'gdpr_consent_at',
             'created_at',
             'updated_at',
         ]

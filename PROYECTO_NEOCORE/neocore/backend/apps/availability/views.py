@@ -204,6 +204,11 @@ class AvailabilitySlotViewSet(viewsets.ViewSet):
                 {'error': 'Invalid parameter format'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        if professional_id <= 0:
+            return Response({'error': 'professional_id invalido'}, status=status.HTTP_400_BAD_REQUEST)
+        if service_duration < 15 or service_duration > 240:
+            return Response({'error': 'service_duration fuera de rango (15-240 minutos)'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Parsear fechas con valores por defecto
         try:
@@ -222,6 +227,11 @@ class AvailabilitySlotViewSet(viewsets.ViewSet):
                 {'error': 'Invalid date format. Use YYYY-MM-DD'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        if end_date < start_date:
+            return Response({'error': 'end_date no puede ser anterior a start_date'}, status=status.HTTP_400_BAD_REQUEST)
+        if (end_date - start_date).days > 31:
+            return Response({'error': 'El rango maximo permitido es de 31 dias'}, status=status.HTTP_400_BAD_REQUEST)
         
         # Generar los slots disponibles mediante el servicio de disponibilidad
         slots = AvailabilityService.get_available_slots(

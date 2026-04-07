@@ -16,6 +16,7 @@ Características principales:
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
 
 
 class User(AbstractUser):
@@ -54,7 +55,7 @@ class User(AbstractUser):
     # Información personal básica
     first_name = models.CharField(_('first name'), max_length=150)
     last_name = models.CharField(_('last name'), max_length=150)
-    phone = models.CharField(_('phone number'), max_length=20, blank=True)
+    phone = EncryptedCharField(_('phone number'), max_length=20, blank=True)
     
     # Rol del usuario en el sistema (por defecto es Cliente)
     role = models.CharField(
@@ -71,7 +72,7 @@ class User(AbstractUser):
         blank=True,
         help_text=_('E.g., Physiotherapy, Nutrition, Personal Training')
     )
-    bio = models.TextField(_('biography'), blank=True)
+    bio = EncryptedTextField(_('biography'), blank=True)
     profile_image = models.ImageField(
         upload_to='profiles/',
         blank=True,
@@ -81,6 +82,9 @@ class User(AbstractUser):
     # Campos de auditoría: fechas de creación y última actualización
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_activity_at = models.DateTimeField(auto_now=True)
+    gdpr_consent = models.BooleanField(default=False)
+    gdpr_consent_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     
     # Configuración de autenticación: se usa email en lugar de username
@@ -107,7 +111,10 @@ class User(AbstractUser):
         a partir del email si no se ha proporcionado uno explícitamente.
         """
         if not self.username:
-            self.username = self.email.split('@')[0]
+            base_username = self.email.split('@')[0]
+            if base_username.lower() == 'admin':
+                base_username = f'admin_{self.pk or "user"}'
+            self.username = base_username
         super().save(*args, **kwargs)
     
     @property

@@ -80,6 +80,7 @@ class Command(BaseCommand):
         admin, created = User.objects.get_or_create(
             email='admin@neocore.com',
             defaults={
+                'username': 'neocore_root',
                 'first_name': 'Admin',
                 'last_name': 'NeoCore',
                 'role': User.Role.ADMIN,

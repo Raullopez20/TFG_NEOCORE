@@ -17,14 +17,7 @@ Define los endpoints relacionados con la autenticación y gestión de usuarios:
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from dj_rest_auth.views import (
-    LoginView,
-    LogoutView,
-    PasswordChangeView,
-    PasswordResetView,
-    PasswordResetConfirmView,
-)
-from dj_rest_auth.registration.views import RegisterView
+from dj_rest_auth.views import PasswordChangeView, PasswordResetView, PasswordResetConfirmView
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
@@ -32,6 +25,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
 from .views import UserViewSet
+from .security_views import SecureLoginView, SecureLogoutView, SecureRegisterView
 from .intermodular_views import (
     PublicDashboardView,
     AuthenticatedDashboardView,
@@ -78,9 +72,9 @@ urlpatterns = [
     path('csrf/', csrf_token, name='csrf_token'),
 
     # --- Endpoints de autenticación (proporcionados por dj-rest-auth) ---
-    path('register/', RegisterView.as_view(), name='rest_register'),
-    path('login/', LoginView.as_view(), name='rest_login'),
-    path('logout/', LogoutView.as_view(), name='rest_logout'),
+    path('register/', SecureRegisterView.as_view(), name='rest_register'),
+    path('login/', SecureLoginView.as_view(), name='rest_login'),
+    path('logout/', SecureLogoutView.as_view(), name='rest_logout'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('password/change/', PasswordChangeView.as_view(), name='rest_password_change'),
     path('password/reset/', PasswordResetView.as_view(), name='rest_password_reset'),

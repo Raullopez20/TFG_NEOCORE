@@ -46,10 +46,11 @@ environ.Env.read_env(os.path.join(BASE_DIR.parent, '.env'))
 # Clave secreta utilizada para firmas criptográficas (tokens, sesiones, etc.)
 # IMPORTANTE: Debe ser única y secreta en producción
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-this-in-production')
+FIELD_ENCRYPTION_KEY = env('FIELD_ENCRYPTION_KEY', default=SECRET_KEY)
 
 # Modo depuración: muestra errores detallados y desactiva ciertas protecciones.
 # NUNCA activar en producción.
-DEBUG = env('DEBUG')
+DEBUG = env.bool('DEBUG', default=False)
 
 # Lista de hosts/dominios permitidos para servir la aplicación.
 # Protege contra ataques de tipo HTTP Host header.
@@ -65,6 +66,9 @@ def _extract_host(value: str) -> str:
 
 
 def _build_allowed_hosts() -> list[str]:
+    if not DEBUG:
+        return ['neocoree.xyz', 'www.neocoree.xyz']
+
     defaults = [
         'localhost',
         '127.0.0.1',
@@ -105,13 +109,19 @@ INSTALLED_APPS = [
     'django.contrib.messages',       # Framework de mensajes
     'django.contrib.staticfiles',    # Gestión de archivos estáticos
     'django.contrib.sites',          # Framework de sitios (requerido por allauth)
+    'django.contrib.humanize',
     
     # --- Apps de terceros ---
     'rest_framework',                          # Django REST Framework para la API REST
     'rest_framework.authtoken',                # Autenticación basada en tokens
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',                             # Manejo de CORS (Cross-Origin Resource Sharing)
     'django_filters',                          # Filtros avanzados para las vistas de la API
     'drf_spectacular',                         # Generación automática de documentación OpenAPI/Swagger
+    'csp',
+    'axes',
+    'django_bleach',
+    'admin_honeypot',
     'allauth',                                 # Autenticación social y gestión de cuentas
     'allauth.account',                         # Gestión de cuentas de usuario (email, contraseña)
     'allauth.socialaccount',                   # Autenticación mediante proveedores sociales
@@ -138,20 +148,21 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',       # Cabeceras de seguridad HTTP (HSTS, etc.)
     'whitenoise.middleware.WhiteNoiseMiddleware',          # Servir archivos estáticos eficientemente
+    'csp.middleware.CSPMiddleware',
     'corsheaders.middleware.CorsMiddleware',               # Gestión de cabeceras CORS
     'django.contrib.sessions.middleware.SessionMiddleware',# Manejo de sesiones de usuario
+    'axes.middleware.AxesMiddleware',
+    'neocore.middleware.SecurityAnalysisMiddleware',
+    'neocore.middleware.SQLInjectionProtectionMiddleware',
+    'neocore.middleware.AdminIPRestrictionMiddleware',
     'django.middleware.locale.LocaleMiddleware',           # Detección de idioma del usuario
     'django.middleware.common.CommonMiddleware',           # Funcionalidades HTTP comunes
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware', # Asocia usuarios a las peticiones
     'django.contrib.messages.middleware.MessageMiddleware',    # Framework de mensajes flash
     'django.middleware.clickjacking.XFrameOptionsMiddleware', # Protección contra clickjacking
     'allauth.account.middleware.AccountMiddleware',            # Middleware de django-allauth
 ]
-
-# Se añade la protección CSRF solo en producción.
-# En desarrollo se omite para facilitar las pruebas con la API.
-if not DEBUG:
-    MIDDLEWARE.insert(6, 'django.middleware.csrf.CsrfViewMiddleware')
 
 # ============================================================================
 # CONFIGURACIÓN DE URLs Y PLANTILLAS
@@ -225,6 +236,18 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+]
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+]
+
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 # ============================================================================
@@ -327,8 +350,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/hour',       # Máximo 100 peticiones/hora para anónimos
-        'user': '1000/hour',      # Máximo 1000 peticiones/hora para autenticados
-        'booking': '10/minute',   # Máximo 10 reservas/minuto (protección anti-spam)
+        'user': '100/hour',       # Máximo 100 peticiones/hora para autenticados
+        'booking': '10/hour',     # Máximo 10 reservas/hora por usuario
     }
 }
 
@@ -338,7 +361,7 @@ REST_FRAMEWORK = {
 # Configuración de los tokens JWT (JSON Web Tokens) para la autenticación
 # sin estado (stateless). Los tokens se envían en la cabecera Authorization.
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),    # El token de acceso expira en 1 hora
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Token corto para reducir ventana de abuso
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),    # El token de refresco expira en 7 días
     'ROTATE_REFRESH_TOKENS': True,                  # Se genera un nuevo refresh token en cada uso
     'BLACKLIST_AFTER_ROTATION': True,               # Se invalida el refresh token anterior
@@ -474,10 +497,26 @@ CSRF_TRUSTED_ORIGINS = list(
         _normalize_origin('https://api.neocoree.xyz'),
     }
 )
-CSRF_COOKIE_HTTPONLY = False      # Permitir acceso a la cookie CSRF desde JavaScript
+CSRF_COOKIE_HTTPONLY = True       # Proteger cookie CSRF frente a acceso JS
 CSRF_USE_SESSIONS = False         # Almacenar el token CSRF en cookie, no en sesión
 CSRF_COOKIE_SAMESITE = 'Lax'     # Política SameSite para la cookie CSRF
-CSRF_COOKIE_SECURE = False        # En desarrollo no se requiere HTTPS
+CSRF_COOKIE_SECURE = not DEBUG
+
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 3600
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # ============================================================================
 # CORREO ELECTRÓNICO
@@ -493,6 +532,7 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)  # Usar cifrado TLS
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='neocore@example.com')
+CONTACT_RECIPIENT_EMAIL = env('CONTACT_RECIPIENT_EMAIL', default=DEFAULT_FROM_EMAIL)
 
 # ============================================================================
 # CELERY (Tareas asíncronas)
@@ -523,14 +563,27 @@ CACHES = {
     }
 }
 
-# Security settings
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
+ADMIN_PATH = env('ADMIN_PATH', default='secure-admin-8f3x9/')
+ADMIN_ALLOWED_IPS = env.list('ADMIN_ALLOWED_IPS', default=[])
+
+AXES_ENABLED = True
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+AXES_ONLY_USER_FAILURES = False
+AXES_VERBOSE = True
+
+BLEACH_ALLOWED_TAGS = ['b', 'i', 'u', 'strong', 'em', 'p', 'ul', 'ol', 'li', 'br']
+BLEACH_ALLOWED_ATTRIBUTES = {}
+BLEACH_ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
+BLEACH_STRIP_COMMENTS = True
+
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'",)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
+CSP_IMG_SRC = ("'self'", 'data:', 'https://images.unsplash.com')
+CSP_FRAME_ANCESTORS = ("'none'",)
 
 # Spectacular (API Documentation)
 SPECTACULAR_SETTINGS = {
@@ -545,15 +598,21 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+        'json': {
+            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'fmt': '%(asctime)s %(levelname)s %(name)s %(message)s %(pathname)s %(lineno)d',
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'json',
+        },
+        'security_file': {
+            'class': 'logging.FileHandler',
+            'filename': str(BASE_DIR / 'security.log'),
+            'formatter': 'json',
+            'level': 'WARNING',
         },
     },
     'root': {
@@ -569,6 +628,11 @@ LOGGING = {
         'apps': {
             'handlers': ['console'],
             'level': 'DEBUG',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['console', 'security_file'],
+            'level': 'WARNING',
             'propagate': False,
         },
     },
