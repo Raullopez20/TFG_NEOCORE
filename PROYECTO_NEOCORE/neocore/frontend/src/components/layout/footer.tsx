@@ -1,8 +1,17 @@
+'use client';
+
 import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+
+  // Ocultar footer publico en el backoffice (tiene su propio layout admin)
+  if (pathname.includes('/backoffice')) {
+    return null;
+  }
 
   return (
     <footer className="bg-gray-900 text-gray-300">

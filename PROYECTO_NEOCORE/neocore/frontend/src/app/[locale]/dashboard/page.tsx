@@ -209,26 +209,26 @@ export default function DashboardPage() {
             </>
           ) : isAdmin ? (
             <>
-              <Link href="/es/bookings">
+              <Link href="/es/backoffice/dashboard">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-bold">Todas las Reservas</h3>
-                    <CalendarClock className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                    <h3 className="text-2xl font-bold">Backoffice</h3>
+                    <ShieldCheck className="w-8 h-8 group-hover:scale-110 transition-transform" />
                   </div>
                   <p className="text-blue-100">
-                    Supervisa las citas del sistema.
+                    Panel de administración: KPIs, usuarios, reservas y servicios.
                   </p>
                 </div>
               </Link>
 
-              <Link href="/es/professionals">
+              <Link href="/es/bookings">
                 <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-bold">Profesionales</h3>
-                    <ShieldCheck className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                    <h3 className="text-2xl font-bold">Todas las Reservas</h3>
+                    <CalendarClock className="w-8 h-8 group-hover:scale-110 transition-transform" />
                   </div>
                   <p className="text-purple-100">
-                    Gestiona el equipo y sus especialidades.
+                    Supervisa las citas del sistema.
                   </p>
                 </div>
               </Link>

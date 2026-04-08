@@ -70,6 +70,11 @@ export function Navbar() {
     return pathname.startsWith(href);
   };
 
+  // Ocultar navbar publica en el backoffice (tiene su propio layout admin)
+  if (pathname.includes('/backoffice')) {
+    return null;
+  }
+
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'ADMIN': return 'Administrador';

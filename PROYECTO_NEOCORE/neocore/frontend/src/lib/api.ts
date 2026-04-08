@@ -354,6 +354,82 @@ export const reviewsAPI = {
   },
 };
 
+// Admin API: endpoints reservados a usuarios con rol ADMIN
+export interface BookingStats {
+  total_bookings: number;
+  pending_bookings: number;
+  confirmed_bookings: number;
+  completed_bookings: number;
+  canceled_bookings: number;
+  rejected_bookings: number;
+  bookings_by_service: Record<string, number>;
+  bookings_by_professional: Record<string, number>;
+  bookings_this_week: number;
+  bookings_this_month: number;
+}
+
+export const adminAPI = {
+  // ----- Estadisticas de reservas -----
+  bookingStats: async (days: number = 30): Promise<BookingStats> => {
+    const response = await api.get('/api/bookings/stats/', { params: { days } });
+    return response.data;
+  },
+
+  // ----- Usuarios -----
+  listUsers: async (params?: {
+    role?: 'CLIENT' | 'PROFESSIONAL' | 'ADMIN';
+    is_active?: boolean;
+    search?: string;
+    ordering?: string;
+  }): Promise<User[]> => {
+    const response = await api.get('/api/auth/users/', { params });
+    return response.data.results || response.data;
+  },
+
+  updateUser: async (id: number, data: Partial<User>): Promise<User> => {
+    const response = await api.patch(`/api/auth/users/${id}/`, data);
+    return response.data;
+  },
+
+  deleteUser: async (id: number): Promise<void> => {
+    await api.delete(`/api/auth/users/${id}/`);
+  },
+
+  // ----- Reservas (todas, vista admin) -----
+  listAllBookings: async (params?: {
+    status?: Booking['status'];
+    professional?: number;
+    client?: number;
+    service?: number;
+    search?: string;
+    ordering?: string;
+  }): Promise<Booking[]> => {
+    const response = await api.get('/api/bookings/', { params });
+    return response.data.results || response.data;
+  },
+
+  // ----- Servicios CRUD -----
+  createService: async (data: Partial<Service>): Promise<Service> => {
+    const response = await api.post('/api/services/', data);
+    return response.data;
+  },
+
+  updateService: async (id: number, data: Partial<Service>): Promise<Service> => {
+    const response = await api.patch(`/api/services/${id}/`, data);
+    return response.data;
+  },
+
+  deleteService: async (id: number): Promise<void> => {
+    await api.delete(`/api/services/${id}/`);
+  },
+
+  listAllServices: async (): Promise<Service[]> => {
+    // Como admin, el backend devuelve activos + inactivos
+    const response = await api.get('/api/services/');
+    return response.data.results || response.data;
+  },
+};
+
 // Contact API
 export const contactAPI = {
   send: async (data: {
