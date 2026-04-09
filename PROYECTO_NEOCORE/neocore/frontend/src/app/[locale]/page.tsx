@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Calendar, Users, Shield, Sparkles } from 'lucide-react';
+import { ArrowRight, Calendar, Users, Shield, Sparkles, Star, Quote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { servicesAPI, professionalsAPI, Service, Professional } from '@/lib/api';
+import {
+  servicesAPI,
+  professionalsAPI,
+  reviewsAPI,
+  Service,
+  Professional,
+  Review,
+} from '@/lib/api';
 
 const FALLBACK_SERVICE_IMAGES: Record<string, string> = {
   fisio: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop',
@@ -25,19 +32,30 @@ function pickServiceImage(name: string): string {
 export default function HomePage() {
   const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
   const [professionalsCount, setProfessionalsCount] = useState<number | null>(null);
+  const [testimonials, setTestimonials] = useState<Review[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [services, professionals] = await Promise.all([
+        // Carga en paralelo de servicios destacados, profesionales (para el
+        // contador) y resenas publicas (para los testimonios). Cada llamada
+        // tiene catch independiente para que un fallo no rompa la pagina.
+        const [services, professionals, reviews] = await Promise.all([
           servicesAPI.list().catch(() => [] as Service[]),
           professionalsAPI.list().catch(() => [] as Professional[]),
+          reviewsAPI.list().catch(() => [] as Review[]),
         ]);
         if (cancelled) return;
         setFeaturedServices(services.filter((s) => s.is_active !== false).slice(0, 4));
         setProfessionalsCount(professionals.length);
+        // Solo testimonios con valoracion >= 4 y comentario para vitrina
+        setTestimonials(
+          reviews
+            .filter((r) => r.rating >= 4 && r.comment && r.comment.trim().length > 0)
+            .slice(0, 6)
+        );
       } finally {
         if (!cancelled) setDataLoading(false);
       }
@@ -208,6 +226,59 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Testimonios reales: solo se renderiza si hay resenas publicadas */}
+      {testimonials.length > 0 && (
+        <section className="py-24 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-14">
+              <span className="inline-block px-3 py-1 mb-3 text-xs font-semibold tracking-wider uppercase rounded-full bg-blue-50 text-blue-700">
+                Lo que dicen nuestros clientes
+              </span>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+                Historias reales, resultados reales
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Opiniones publicadas por personas que ya han confiado en nuestro equipo.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonials.map((review) => (
+                <article
+                  key={review.id}
+                  className="relative bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-7 shadow-sm hover:shadow-lg transition-shadow"
+                >
+                  <Quote className="w-8 h-8 text-blue-300 mb-3" />
+                  <p className="text-gray-700 leading-relaxed mb-5 text-sm">
+                    {review.comment}
+                  </p>
+                  <div className="flex items-center gap-0.5 mb-3">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-4 h-4 ${
+                          s <= review.rating
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="border-t border-blue-100 pt-3">
+                    <p className="font-semibold text-gray-900 text-sm">
+                      {review.client_name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {review.service_name} · con {review.professional_name}
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="relative py-24 bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden">

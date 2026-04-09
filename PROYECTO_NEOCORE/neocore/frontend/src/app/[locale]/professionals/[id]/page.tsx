@@ -3,17 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { professionalsAPI, Professional } from '@/lib/api';
+import { professionalsAPI, reviewsAPI, Professional, Review } from '@/lib/api';
 import {
   ArrowLeft,
   Mail,
   Award,
   Star,
   Calendar,
-  Clock,
   MapPin,
   CheckCircle,
   Briefcase,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -23,6 +23,7 @@ export default function ProfessionalDetailPage() {
   const professionalId = params.id as string;
 
   const [professional, setProfessional] = useState<Professional | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +32,14 @@ export default function ProfessionalDetailPage() {
 
   const loadProfessionalDetails = async () => {
     try {
-      const data = await professionalsAPI.get(Number(professionalId));
+      // Cargamos en paralelo el detalle del profesional y sus resenas
+      // visibles. Si fallan las resenas seguimos mostrando el perfil.
+      const [data, reviewsData] = await Promise.all([
+        professionalsAPI.get(Number(professionalId)),
+        reviewsAPI.list({ professional: Number(professionalId) }).catch(() => []),
+      ]);
       setProfessional(data);
+      setReviews(reviewsData);
     } catch (error) {
       console.error('Error loading professional:', error);
     } finally {
@@ -133,12 +140,30 @@ export default function ProfessionalDetailPage() {
                         Certificado
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 mb-4">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      ))}
-                      <span className="text-gray-600 ml-2">(4.9/5 · 127 valoraciones)</span>
-                    </div>
+                    {/* Rating real calculado en backend (ProfessionalSerializer) */}
+                    {professional.average_rating != null && professional.reviews_count ? (
+                      <div className="flex items-center gap-1 mb-4">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-5 h-5 ${
+                              star <= Math.round(professional.average_rating || 0)
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                        <span className="text-gray-600 ml-2">
+                          ({professional.average_rating?.toFixed(1)}/5 ·{' '}
+                          {professional.reviews_count}{' '}
+                          {professional.reviews_count === 1 ? 'valoración' : 'valoraciones'})
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 mb-4">
+                        Aún no hay valoraciones publicadas.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -247,6 +272,69 @@ export default function ProfessionalDetailPage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Resenas reales de clientes (Review.is_visible=true) */}
+            <div className="bg-white rounded-xl shadow-md p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Opiniones de Clientes</h2>
+                {reviews.length > 0 && (
+                  <span className="text-sm text-gray-500">
+                    {reviews.length} {reviews.length === 1 ? 'reseña' : 'reseñas'}
+                  </span>
+                )}
+              </div>
+
+              {reviews.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <MessageCircle className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">
+                    Este profesional aún no tiene reseñas publicadas.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {reviews.slice(0, 5).map((review) => (
+                    <article
+                      key={review.id}
+                      className="border border-gray-100 rounded-xl p-5 hover:border-indigo-200 hover:shadow-sm transition-all"
+                    >
+                      <header className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {review.client_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {review.service_name} ·{' '}
+                            {new Date(review.created_at).toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-4 h-4 ${
+                                s <= review.rating
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </header>
+                      {review.comment && (
+                        <p className="text-gray-700 leading-relaxed text-sm">
+                          {review.comment}
+                        </p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

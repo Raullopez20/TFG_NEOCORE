@@ -195,14 +195,14 @@ export default function DashboardPage() {
                 </div>
               </Link>
 
-              <Link href="/es/profile">
+              <Link href="/es/professional/schedule">
                 <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl shadow-md p-8 text-white hover:shadow-xl transition-all group cursor-pointer">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-bold">Mi Perfil</h3>
+                    <h3 className="text-2xl font-bold">Mi Horario</h3>
                     <Settings className="w-8 h-8 group-hover:rotate-45 transition-transform" />
                   </div>
                   <p className="text-purple-100">
-                    Actualiza tu bio, especialidad y disponibilidad.
+                    Configura tus franjas semanales y ausencias.
                   </p>
                 </div>
               </Link>
