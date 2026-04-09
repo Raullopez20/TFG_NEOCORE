@@ -1,0 +1,10 @@
+{
+  "$schema": "https://railway.app/schemas/railway.json",
+  "build": {
+    "builder": "paketo"
+  },
+  "deploy": {
+    "startCommand": "cd PROYECTO_NEOCORE/neocore/backend && python manage.py migrate --noinput && gunicorn neocore.wsgi:application --bind 0.0.0.0:$PORT",
+    "restartPolicyMaxRetries": 5
+  }
+}
