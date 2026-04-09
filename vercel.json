@@ -4,15 +4,6 @@
   "installCommand": "npm --prefix PROYECTO_NEOCORE/neocore/frontend install",
   "buildCommand": "npm --prefix PROYECTO_NEOCORE/neocore/frontend run build",
   "outputDirectory": "PROYECTO_NEOCORE/neocore/frontend/.next",
-  "functions": {
-    "api/index.py": {
-      "runtime": "@vercel/python@4.3.0",
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
