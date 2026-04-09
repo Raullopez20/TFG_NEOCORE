@@ -446,6 +446,7 @@ def _build_frontend_origins() -> list[str]:
         'http://127.0.0.1:3000',
         'https://neocoree.xyz',
         'https://www.neocoree.xyz',
+        'https://api.neocoree.xyz',
     ]
     configured = env.list('CORS_ALLOWED_ORIGINS', default=[])
     inferred = [

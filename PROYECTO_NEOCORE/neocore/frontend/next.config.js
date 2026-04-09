@@ -25,6 +25,13 @@ const nextConfig = {
     ],
   },
   async rewrites() {
+    // En Vercel, el rewrite de /api/* lo maneja vercel.json apuntando a
+    // la funcion Python serverless en /api/index.py. En local/docker,
+    // usamos BACKEND_API_URL para proxyear a un backend Django normal.
+    if (process.env.VERCEL === '1') {
+      return [];
+    }
+
     const apiUrl = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL;
 
     if (!apiUrl) {
