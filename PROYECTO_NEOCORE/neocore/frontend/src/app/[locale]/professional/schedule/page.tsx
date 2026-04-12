@@ -1,20 +1,5 @@
 'use client';
 
-/**
- * Pagina de gestion del horario del profesional.
- *
- * Permite al usuario con rol PROFESSIONAL:
- *  - Ver/anadir/eliminar reglas de disponibilidad semanal (AvailabilityRule).
- *  - Ver/anadir/eliminar periodos de ausencia (TimeOff).
- *
- * El acceso esta protegido: si el usuario no esta autenticado o no es
- * profesional se le redirige a /login o /dashboard segun corresponda.
- *
- * Los datos se obtienen siempre del usuario actual (no se pasa professional id),
- * porque el backend filtra automaticamente las reglas/ausencias del usuario
- * autenticado cuando no es admin.
- */
-
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
@@ -23,10 +8,9 @@ import {
   Plus,
   Trash2,
   Loader2,
-  AlertCircle,
   CalendarOff,
-  CheckCircle2,
   ArrowLeft,
+  Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -37,14 +21,15 @@ import {
   TimeOff,
   User,
 } from '@/lib/api';
+import { toast } from 'sonner';
 
 const DAYS = [
   { value: 0, label: 'Lunes', short: 'Lun' },
   { value: 1, label: 'Martes', short: 'Mar' },
-  { value: 2, label: 'Miercoles', short: 'Mie' },
+  { value: 2, label: 'Miércoles', short: 'Mié' },
   { value: 3, label: 'Jueves', short: 'Jue' },
   { value: 4, label: 'Viernes', short: 'Vie' },
-  { value: 5, label: 'Sabado', short: 'Sab' },
+  { value: 5, label: 'Sábado', short: 'Sáb' },
   { value: 6, label: 'Domingo', short: 'Dom' },
 ];
 
@@ -67,28 +52,18 @@ export default function ProfessionalSchedulePage() {
   const [newStart, setNewStart] = useState('09:00');
   const [newEnd, setNewEnd] = useState('17:00');
   const [creatingRule, setCreatingRule] = useState(false);
-  const [ruleError, setRuleError] = useState<string | null>(null);
 
   // Formulario nueva ausencia
   const [offStart, setOffStart] = useState(todayISO());
   const [offEnd, setOffEnd] = useState(todayISO());
   const [offReason, setOffReason] = useState('');
   const [creatingOff, setCreatingOff] = useState(false);
-  const [offError, setOffError] = useState<string | null>(null);
-
-  // Feedback global (toast simple)
-  const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(
-    null
-  );
 
   useEffect(() => {
     let cancelled = false;
 
     const init = async () => {
-      const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('access_token')
-          : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
       if (!token) {
         router.replace(`/${locale}/login`);
         return;
@@ -97,12 +72,7 @@ export default function ProfessionalSchedulePage() {
         const me = await authAPI.me();
         if (cancelled) return;
         if (me.role !== 'PROFESSIONAL') {
-          // Admins van al backoffice, clientes a su dashboard
-          router.replace(
-            me.role === 'ADMIN'
-              ? `/${locale}/backoffice/dashboard`
-              : `/${locale}/dashboard`
-          );
+          router.replace(me.role === 'ADMIN' ? `/${locale}/backoffice/dashboard` : `/${locale}/dashboard`);
           return;
         }
         setUser(me);
@@ -115,18 +85,8 @@ export default function ProfessionalSchedulePage() {
     };
 
     init();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale]);
-
-  // Auto-ocultar toast tras 3 segundos
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
+    return () => { cancelled = true; };
+  }, [locale, router]);
 
   const reload = async () => {
     const [r, o] = await Promise.all([
@@ -139,9 +99,8 @@ export default function ProfessionalSchedulePage() {
 
   const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRuleError(null);
     if (newStart >= newEnd) {
-      setRuleError('La hora de inicio debe ser anterior a la de fin.');
+      toast.error('Horario inválido', { description: 'La hora de inicio debe ser anterior a la de fin.' });
       return;
     }
     setCreatingRule(true);
@@ -152,35 +111,29 @@ export default function ProfessionalSchedulePage() {
         end_time: newEnd,
       });
       await reload();
-      setToast({ type: 'ok', msg: 'Franja anadida correctamente.' });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: Record<string, unknown> } };
-      const data = error.response?.data;
-      const msg =
-        (data && (data.detail || data.non_field_errors || JSON.stringify(data))) ||
-        'No se pudo crear la regla.';
-      setRuleError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      toast.success('Franja añadida correctamente');
+    } catch (err: any) {
+      toast.error('Error al crear franja', { description: err.response?.data?.detail || 'Revisa los datos e intenta nuevamente.' });
     } finally {
       setCreatingRule(false);
     }
   };
 
   const handleDeleteRule = async (id: number) => {
-    if (!confirm('Eliminar esta franja horaria?')) return;
+    if (!confirm('¿Eliminar esta franja horaria?')) return;
     try {
       await availabilityAPI.deleteRule(id);
       setRules((prev) => prev.filter((r) => r.id !== id));
-      setToast({ type: 'ok', msg: 'Franja eliminada.' });
+      toast.success('Franja eliminada');
     } catch {
-      setToast({ type: 'err', msg: 'No se pudo eliminar la franja.' });
+      toast.error('Error', { description: 'No se pudo eliminar la franja.' });
     }
   };
 
   const handleCreateOff = async (e: React.FormEvent) => {
     e.preventDefault();
-    setOffError(null);
     if (offStart > offEnd) {
-      setOffError('La fecha de inicio debe ser anterior o igual a la de fin.');
+      toast.error('Fechas inválidas', { description: 'El inicio debe ser anterior o igual al fin.' });
       return;
     }
     setCreatingOff(true);
@@ -192,145 +145,94 @@ export default function ProfessionalSchedulePage() {
       });
       await reload();
       setOffReason('');
-      setToast({ type: 'ok', msg: 'Periodo de ausencia anadido.' });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: Record<string, unknown> } };
-      const data = error.response?.data;
-      const msg =
-        (data && (data.detail || data.non_field_errors || JSON.stringify(data))) ||
-        'No se pudo crear la ausencia.';
-      setOffError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      toast.success('Periodo de ausencia añadido');
+    } catch (err: any) {
+      toast.error('Error al añadir ausencia', { description: err.response?.data?.detail || 'Intenta nuevamente.' });
     } finally {
       setCreatingOff(false);
     }
   };
 
   const handleDeleteOff = async (id: number) => {
-    if (!confirm('Eliminar este periodo de ausencia?')) return;
+    if (!confirm('¿Eliminar este periodo de ausencia?')) return;
     try {
       await availabilityAPI.deleteTimeOff(id);
       setTimeOffs((prev) => prev.filter((t) => t.id !== id));
-      setToast({ type: 'ok', msg: 'Ausencia eliminada.' });
+      toast.success('Ausencia eliminada');
     } catch {
-      setToast({ type: 'err', msg: 'No se pudo eliminar la ausencia.' });
+      toast.error('Error', { description: 'No se pudo eliminar la ausencia.' });
     }
   };
 
-  // Reglas agrupadas por dia para la vista semanal
   const rulesByDay: Record<number, AvailabilityRule[]> = {};
   DAYS.forEach((d) => (rulesByDay[d.value] = []));
   rules.forEach((r) => {
-    if (rulesByDay[r.day_of_week]) {
-      rulesByDay[r.day_of_week].push(r);
-    }
+    if (rulesByDay[r.day_of_week]) rulesByDay[r.day_of_week].push(r);
   });
-  Object.values(rulesByDay).forEach((arr) =>
-    arr.sort((a, b) => a.start_time.localeCompare(b.start_time))
-  );
+  Object.values(rulesByDay).forEach((arr) => arr.sort((a, b) => a.start_time.localeCompare(b.start_time)));
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-slate-600 text-sm">Cargando tu horario...</p>
+      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-gray-500">
+          <Loader2 className="w-8 h-8 animate-spin text-[#0071e3]" />
+          <p className="text-[13px] font-medium uppercase tracking-wide">Cargando horario</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 ${
-            toast.type === 'ok'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-red-600 text-white'
-          }`}
-        >
-          {toast.type === 'ok' ? (
-            <CheckCircle2 className="w-4 h-4" />
-          ) : (
-            <AlertCircle className="w-4 h-4" />
-          )}
-          {toast.msg}
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="bg-gradient-to-br from-indigo-600 to-blue-700 text-white">
-        <div className="container mx-auto px-4 py-10">
-          <Link
-            href={`/${locale}/dashboard`}
-            className="inline-flex items-center text-blue-100 hover:text-white text-sm mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Volver al dashboard
+    <div className="min-h-screen bg-[#f5f5f7] pb-24">
+      {/* Dynamic Header */}
+      <div className="bg-white/60 backdrop-blur-3xl border-b border-gray-200/50 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Link href={`/${locale}/dashboard`} className="inline-flex items-center text-[13px] font-medium text-gray-500 hover:text-[#0071e3] transition-colors mb-3">
+            <ArrowLeft className="w-4 h-4 mr-1.5" /> Volver al dashboard
           </Link>
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                Mi horario y disponibilidad
-              </h1>
-              <p className="text-blue-100">
-                Gestiona tus franjas semanales y tus periodos de ausencia.
+              <h1 className="text-[28px] sm:text-[34px] font-bold text-gray-900 tracking-tight leading-tight">Configuración de Horario</h1>
+              <p className="text-[14px] text-gray-500 mt-1">
+                Define cuándo puedes recibir citas y bloquea ausencias o vacaciones.
               </p>
-              {user && (
-                <p className="text-blue-200 text-sm mt-1">
-                  Conectado como <strong>{user.full_name || user.email}</strong>
-                </p>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Reglas semanales */}
-        <section className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" />
-              <h2 className="font-semibold text-slate-800">
-                Franjas semanales
-              </h2>
-              <span className="ml-auto text-xs text-slate-500">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Weekly Rules */}
+        <section className="lg:col-span-2 flex flex-col gap-6">
+          <div className="bg-white/70 backdrop-blur-xl rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+            <div className="px-7 py-6 border-b border-gray-100 flex items-center justify-between bg-white/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                   <Clock className="w-4 h-4 text-[#0071e3]" />
+                </div>
+                <h2 className="text-[18px] font-semibold text-gray-900 tracking-tight">Franjas Semanales Habituales</h2>
+              </div>
+              <span className="bg-blue-50 text-[#0071e3] px-3 py-1 rounded-full text-[12px] font-bold tracking-wide uppercase">
                 {rules.length} {rules.length === 1 ? 'franja' : 'franjas'}
               </span>
             </div>
 
-            <div className="p-6">
-              {/* Vista semanal */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 mb-6">
+            <div className="p-7">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 mb-8">
                 {DAYS.map((d) => (
-                  <div
-                    key={d.value}
-                    className="border border-slate-200 rounded-lg p-3 min-h-[110px]"
-                  >
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  <div key={d.value} className="bg-gray-50/50 border border-gray-200/60 rounded-[16px] p-3.5 flex flex-col items-center sm:items-start min-h-[140px] transition-colors hover:bg-gray-50">
+                    <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-3 w-full text-center sm:text-left border-b border-gray-200/60 pb-2">
                       {d.short}
                     </p>
                     {rulesByDay[d.value].length === 0 ? (
-                      <p className="text-xs text-slate-400 italic">
-                        Sin franjas
-                      </p>
+                      <p className="text-[12px] font-medium text-gray-400 italic text-center w-full mt-2">Libre</p>
                     ) : (
-                      <ul className="space-y-1.5">
+                      <ul className="space-y-2 w-full flex-1">
                         {rulesByDay[d.value].map((r) => (
-                          <li
-                            key={r.id}
-                            className="group flex items-center justify-between bg-blue-50 text-blue-800 text-xs px-2 py-1 rounded"
-                          >
-                            <span>
-                              {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)}
-                            </span>
-                            <button
-                              onClick={() => handleDeleteRule(r.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
-                              aria-label="Eliminar"
-                            >
+                          <li key={r.id} className="group relative flex items-center justify-center sm:justify-start w-full bg-white border border-gray-200/80 text-gray-700 font-medium text-[12px] px-2.5 py-1.5 rounded-[10px] shadow-sm hover:border-[#0071e3] transition-colors">
+                            <span>{r.start_time.slice(0, 5)} - {r.end_time.slice(0, 5)}</span>
+                            <button onClick={() => handleDeleteRule(r.id)} className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 text-red-500 rounded p-1 hover:bg-red-100" title="Eliminar">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </li>
@@ -341,185 +243,96 @@ export default function ProfessionalSchedulePage() {
                 ))}
               </div>
 
-              {/* Formulario nueva regla */}
-              <form
-                onSubmit={handleCreateRule}
-                className="border-t border-slate-100 pt-5"
-              >
-                <p className="text-sm font-medium text-slate-700 mb-3">
-                  Anadir nueva franja
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <select
-                    value={newDay}
-                    onChange={(e) => setNewDay(Number(e.target.value))}
-                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {DAYS.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="time"
-                    value={newStart}
-                    onChange={(e) => setNewStart(e.target.value)}
-                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="time"
-                    value={newEnd}
-                    onChange={(e) => setNewEnd(e.target.value)}
-                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={creatingRule}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {creatingRule ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-1" />
-                        Anadir
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {ruleError && (
-                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {ruleError}
-                  </p>
-                )}
-              </form>
-            </div>
-          </div>
-        </section>
-
-        {/* Ausencias */}
-        <section className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <CalendarOff className="w-5 h-5 text-amber-600" />
-              <h2 className="font-semibold text-slate-800">Ausencias</h2>
-              <span className="ml-auto text-xs text-slate-500">
-                {timeOffs.length}
-              </span>
-            </div>
-
-            <div className="p-6">
-              <form onSubmit={handleCreateOff} className="space-y-3 mb-5">
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">
-                    Desde
-                  </label>
-                  <input
-                    type="date"
-                    value={offStart}
-                    onChange={(e) => setOffStart(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">
-                    Hasta
-                  </label>
-                  <input
-                    type="date"
-                    value={offEnd}
-                    onChange={(e) => setOffEnd(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-600 block mb-1">
-                    Motivo (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={offReason}
-                    onChange={(e) => setOffReason(e.target.value)}
-                    placeholder="Vacaciones, congreso..."
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={creatingOff}
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  {creatingOff ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Anadir ausencia
-                    </>
-                  )}
-                </Button>
-                {offError && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4" />
-                    {offError}
-                  </p>
-                )}
-              </form>
-
-              <div className="border-t border-slate-100 pt-4">
-                {timeOffs.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-4">
-                    No tienes ausencias programadas.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {timeOffs.map((t) => (
-                      <li
-                        key={t.id}
-                        className="flex items-start justify-between gap-2 bg-amber-50 border border-amber-100 rounded-lg p-3"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-amber-900">
-                            {new Date(t.start_date).toLocaleDateString('es-ES')}{' '}
-                            – {new Date(t.end_date).toLocaleDateString('es-ES')}
-                          </p>
-                          {t.reason && (
-                            <p className="text-xs text-amber-700 mt-0.5 truncate">
-                              {t.reason}
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleDeleteOff(t.id)}
-                          className="text-red-500 hover:text-red-700 flex-shrink-0"
-                          aria-label="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              {/* Add New Rule */}
+              <div className="bg-gray-50 rounded-[20px] p-5 border border-gray-200/60">
+                 <p className="text-[14px] font-semibold text-gray-900 mb-4 tracking-tight">Añadir disponibilidad</p>
+                 <form onSubmit={handleCreateRule} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                   <select value={newDay} onChange={(e) => setNewDay(Number(e.target.value))} className="h-10 px-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20 focus:border-[#0071e3] transition-colors">
+                     {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                   </select>
+                   <input type="time" value={newStart} onChange={(e) => setNewStart(e.target.value)} className="h-10 px-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20 focus:border-[#0071e3] transition-colors" />
+                   <input type="time" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="h-10 px-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20 focus:border-[#0071e3] transition-colors" />
+                   <Button type="submit" disabled={creatingRule} className="h-10 bg-[#0071e3] hover:bg-[#005bb5] text-white rounded-[12px] font-medium text-[13px] shadow-sm">
+                     {creatingRule ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1.5" /> Añadir</>}
+                   </Button>
+                 </form>
               </div>
             </div>
           </div>
 
-          {/* Tip */}
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
-            <div className="flex gap-3">
-              <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+           {/* Info Tip */}
+           <div className="bg-white/60 backdrop-blur-lg border border-blue-100 rounded-[24px] p-6 flex gap-4 shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+               <Info className="w-5 h-5 text-[#0071e3]" />
+            </div>
+            <div>
+              <p className="text-[15px] font-semibold text-gray-900 mb-1 tracking-tight">Sobre la disponibilidad</p>
+              <p className="text-[13px] text-gray-600 leading-relaxed">
+                Las franjas que añades aquí se repiten todas las semanas. Si necesitas un bloque ocasional (vacaciones, congresos, indisposición), utiliza la sección de «Ausencias». El sistema restará estas ausencias de tu horario automáticamente.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Time Offs */}
+        <section className="flex flex-col gap-6">
+          <div className="bg-white/70 backdrop-blur-xl rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-2.5 bg-white/40">
+              <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center">
+                 <CalendarOff className="w-4 h-4 text-amber-600" />
+              </div>
+              <h2 className="text-[17px] font-semibold text-gray-900 tracking-tight">Ausencias</h2>
+            </div>
+
+            <div className="p-6">
+               <div className="bg-gray-50 border border-gray-200/60 rounded-[20px] p-4 mb-6">
+                 <form onSubmit={handleCreateOff} className="flex flex-col gap-3">
+                   <div>
+                     <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1.5 ml-1">Fecha de inicio</label>
+                     <input type="date" value={offStart} onChange={(e) => setOffStart(e.target.value)} className="w-full h-10 px-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
+                   </div>
+                   <div>
+                     <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1.5 ml-1">Fecha de fin</label>
+                     <input type="date" value={offEnd} onChange={(e) => setOffEnd(e.target.value)} className="w-full h-10 px-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
+                   </div>
+                   <div>
+                     <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide block mb-1.5 ml-1">Motivo (Opcional)</label>
+                     <input type="text" value={offReason} onChange={(e) => setOffReason(e.target.value)} placeholder="Ej. Vacaciones de verano" className="w-full h-10 px-3 bg-white border border-gray-200 rounded-[12px] text-[13px] font-medium text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
+                   </div>
+                   <Button type="submit" disabled={creatingOff} className="w-full h-10 mt-1 bg-amber-500 hover:bg-amber-600 text-white rounded-[12px] font-medium text-[13px] shadow-sm">
+                     {creatingOff ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Registrar Ausencia'}
+                   </Button>
+                 </form>
+               </div>
+
               <div>
-                <p className="text-sm font-semibold text-blue-900 mb-1">
-                  Como funciona
-                </p>
-                <p className="text-xs text-blue-800 leading-relaxed">
-                  Las franjas semanales son recurrentes: si anades los lunes
-                  9:00–13:00, estaras disponible todos los lunes en ese horario.
-                  Las ausencias bloquean dias concretos, ideales para vacaciones
-                  o eventos puntuales.
-                </p>
+                <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Próximos Bloqueos</p>
+                {timeOffs.length === 0 ? (
+                  <p className="text-[13px] font-medium text-gray-400 text-center py-6 bg-gray-50/50 rounded-[16px] border border-gray-100 border-dashed">
+                    No tienes ausencias programadas.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-3">
+                    {timeOffs.map((t) => (
+                      <li key={t.id} className="flex flex-col gap-2 bg-white border border-gray-200/60 rounded-[16px] p-4 shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-colors hover:border-gray-300">
+                        <div className="flex items-start justify-between">
+                           <div className="flex flex-col">
+                             <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md self-start mb-1.5 uppercase tracking-wide">
+                               Ausencia Confirmada
+                             </span>
+                             <p className="text-[13.5px] font-semibold text-gray-900 tracking-tight">
+                               {new Date(t.start_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} – {new Date(t.end_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                             </p>
+                             {t.reason && <p className="text-[12.5px] text-gray-500 font-medium mt-1">{t.reason}</p>}
+                           </div>
+                           <button onClick={() => handleDeleteOff(t.id)} className="text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 p-1.5 rounded-full transition-colors" title="Cancelar Ausencia">
+                             <Trash2 className="w-4 h-4" />
+                           </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           </div>

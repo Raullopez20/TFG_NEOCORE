@@ -41,13 +41,13 @@ const fadeUp = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.12, duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { delay: i * 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] },
   }),
 };
 
 const staggerContainer = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.12 } },
+  visible: { transition: { staggerChildren: 0.1 } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -88,7 +88,7 @@ export default function HomePage() {
   const ctaRef = useRef(null);
 
   const featuresInView = useInView(featuresRef, { once: true, amount: 0.2 });
-  const servicesInView = useInView(servicesRef, { once: true, amount: 0.15 });
+  const servicesInView = useInView(servicesRef, { once: true, amount: 0.2 });
   const statsInView = useInView(statsRef, { once: true, amount: 0.3 });
   const testimonialsInView = useInView(testimonialsRef, { once: true, amount: 0.15 });
   const ctaInView = useInView(ctaRef, { once: true, amount: 0.3 });
@@ -114,7 +114,7 @@ export default function HomePage() {
         setTestimonials(
           reviews
             .filter((r) => r.rating >= 4 && r.comment && r.comment.trim().length > 0)
-            .slice(0, 6)
+            .slice(0, 3)
         );
       } finally {
         if (!cancelled) setDataLoading(false);
@@ -127,116 +127,109 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#f5f5f7]">
       {/* ============================================================ */}
       {/*  HERO                                                         */}
       {/* ============================================================ */}
-      <section className="relative min-h-screen flex items-center justify-center gradient-hero text-white overflow-hidden">
+      <section className="relative min-h-[90vh] flex items-center justify-center bg-gray-50 text-gray-900 overflow-hidden">
         {/* Floating gradient orbs */}
-        <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 -right-32 w-[400px] h-[400px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/4 -left-32 w-[600px] h-[600px] rounded-full bg-blue-300/30 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-32 w-[500px] h-[500px] rounded-full bg-indigo-300/20 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 container mx-auto px-4 text-center max-w-4xl">
+        <div className="relative z-10 container mx-auto px-4 text-center max-w-[900px] mt-16">
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
             className="space-y-8"
           >
-            <motion.p
-              variants={fadeUp}
-              custom={0}
-              className="uppercase tracking-[0.3em] text-sm text-blue-300/80 font-medium"
-            >
-              NeoCore Health
-            </motion.p>
+            <motion.div variants={fadeUp} custom={0} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 cursor-default backdrop-blur-md border border-gray-200/50 shadow-sm mx-auto">
+               <Sparkles className="w-4 h-4 text-blue-500" />
+               <span className="text-[12px] font-semibold tracking-wider uppercase text-blue-600">
+                  La Evolución de Tu Salud
+               </span>
+            </motion.div>
 
             <motion.h1
               variants={fadeUp}
               custom={1}
-              className="text-6xl md:text-8xl font-bold tracking-tight leading-[0.95]"
+              className="text-[52px] sm:text-[72px] lg:text-[84px] font-extrabold tracking-tight leading-[1]"
             >
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-400">
-                Tu Bienestar,
-              </span>
+              <span className="text-gray-900">Bienestar</span>
               <br />
-              <span className="text-white">Reimaginado</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#0071e3] to-[#00aaff]">
+                Reimaginado.
+              </span>
             </motion.h1>
 
             <motion.p
               variants={fadeUp}
               custom={2}
-              className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
+              className="text-[19px] sm:text-[22px] text-gray-500 max-w-[700px] mx-auto leading-relaxed font-medium"
             >
-              Servicios de salud de nueva generacion. Profesionales de elite,
-              tecnologia de vanguardia y una experiencia sin fricciones.
+              Servicios de salud de nueva generación. Equipo de élite, atención premium y un sistema de reservas que respeta tu tiempo.
             </motion.p>
 
             <motion.div
               variants={fadeUp}
               custom={3}
-              className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
+              className="flex flex-col sm:flex-row gap-4 justify-center pt-8"
             >
               <Link href="/es/services">
-                <Button className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-6 text-lg font-semibold rounded-full shadow-lg shadow-white/10 transition-all duration-300 hover:shadow-white/20 hover:scale-[1.02]">
+                <Button className="w-full sm:w-auto bg-[#0071e3] hover:bg-[#005bb5] text-white px-8 py-7 rounded-full text-[17px] font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
                   Explorar Servicios
-                  <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
               <Link href="/es/about">
-                <Button className="bg-transparent text-white hover:bg-white/10 border border-white/30 px-8 py-6 text-lg font-semibold rounded-full transition-all duration-300 hover:border-white/60">
-                  Conocer Mas
+                <Button className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-8 py-7 rounded-full text-[17px] font-semibold shadow-sm transition-all duration-300 hover:scale-[1.02]">
+                  Conocer Más
                 </Button>
               </Link>
             </motion.div>
           </motion.div>
         </div>
-
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
       </section>
 
       {/* ============================================================ */}
       {/*  FEATURES                                                     */}
       {/* ============================================================ */}
-      <section ref={featuresRef} className="py-24 bg-white">
-        <div className="container mx-auto px-4">
+      <section ref={featuresRef} className="py-32 relative">
+        <div className="container mx-auto px-4 max-w-[1200px]">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={featuresInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center mb-20"
           >
-            <span className="uppercase tracking-[0.2em] text-sm font-semibold text-blue-600 mb-4 block">
-              Por que NeoCore
-            </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
-              Disenado para tu salud
+            <h2 className="text-[36px] sm:text-[48px] font-bold text-gray-900 tracking-tight mb-4">
+              Diseñado pensando en ti.
             </h2>
+            <p className="text-[20px] text-gray-500 max-w-[600px] mx-auto font-medium">
+               Pioneros en unir tecnología, comodidad y profesionales de la salud.
+            </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: Calendar,
-                title: 'Reserva Facil',
-                description: 'Sistema de reservas intuitivo y rapido para todas nuestras especialidades.',
+                title: 'Reservas Fluidas',
+                description: 'Agenda tus citas en menos de un minuto desde cualquier dispositivo, sin llamadas.',
               },
               {
                 icon: Users,
-                title: 'Profesionales Expertos',
-                description: 'Equipo multidisciplinar de profesionales certificados y con experiencia.',
+                title: 'Equipo Experto',
+                description: 'Profesionales altamente capacitados seleccionados por su experiencia.',
               },
               {
                 icon: Shield,
-                title: 'Seguro y Confiable',
-                description: 'Tus datos estan protegidos con los mas altos estandares de seguridad.',
+                title: 'Máxima Privacidad',
+                description: 'Tus datos clínicos y personales blindados con encriptación de grado médico.',
               },
               {
                 icon: Sparkles,
-                title: 'Atencion Personalizada',
-                description: 'Cada tratamiento adaptado a tus necesidades y objetivos especificos.',
+                title: 'Experiencia Premium',
+                description: 'Desde nuestra plataforma hasta la consulta, un trato exquisito.',
               },
             ].map((feature, i) => (
               <motion.div
@@ -245,13 +238,13 @@ export default function HomePage() {
                 variants={fadeUp}
                 initial="hidden"
                 animate={featuresInView ? 'visible' : 'hidden'}
-                className="group bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
+                className="bg-white/60 backdrop-blur-xl rounded-[28px] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors duration-300">
-                  <feature.icon className="w-7 h-7 text-blue-600" />
+                <div className="w-14 h-14 rounded-[16px] bg-[#0071e3]/10 flex items-center justify-center mb-6">
+                  <feature.icon className="w-6 h-6 text-[#0071e3]" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-500 leading-relaxed">{feature.description}</p>
+                <h3 className="text-[20px] font-semibold text-gray-900 tracking-tight mb-3">{feature.title}</h3>
+                <p className="text-[15px] font-medium text-gray-500 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -261,43 +254,44 @@ export default function HomePage() {
       {/* ============================================================ */}
       {/*  SERVICES PREVIEW                                             */}
       {/* ============================================================ */}
-      <section ref={servicesRef} className="py-24 bg-gray-50/50">
-        <div className="container mx-auto px-4">
+      <section ref={servicesRef} className="py-32 bg-white relative">
+        <div className="container mx-auto px-4 max-w-[1200px]">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={servicesInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-14"
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6"
           >
-            <span className="uppercase tracking-[0.2em] text-sm font-semibold text-blue-600 mb-4 block">
-              Nuestras Especialidades
-            </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4">
-              Servicios profesionales
-            </h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-              Soluciones integrales para tu salud y bienestar
-            </p>
+            <div>
+              <h2 className="text-[36px] sm:text-[48px] font-bold text-gray-900 tracking-tight mb-4">
+                Encuentra tu servicio
+              </h2>
+              <p className="text-[20px] text-gray-500 max-w-[600px] font-medium">
+                Cobertura integral para llevar tu salud al siguiente nivel.
+              </p>
+            </div>
+            <Link href="/es/services">
+               <span className="text-[16px] font-semibold text-[#0071e3] hover:underline flex items-center gap-2 cursor-pointer">
+                  Ver catálogo completo <ArrowRight className="w-4 h-4" />
+               </span>
+            </Link>
           </motion.div>
 
           {dataLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse"
-                >
-                  <div className="h-48 bg-gray-200" />
-                  <div className="p-6 space-y-3">
-                    <div className="h-5 bg-gray-200 rounded w-2/3" />
-                    <div className="h-4 bg-gray-100 rounded w-full" />
-                    <div className="h-4 bg-gray-100 rounded w-5/6" />
+                <div key={i} className="bg-gray-50 rounded-[28px] overflow-hidden animate-pulse border border-gray-100">
+                  <div className="h-[200px] bg-gray-200" />
+                  <div className="p-7 space-y-4">
+                    <div className="h-5 bg-gray-200 rounded-full w-2/3" />
+                    <div className="h-4 bg-gray-200 rounded-full w-full" />
+                    <div className="h-4 bg-gray-200 rounded-full w-5/6" />
                   </div>
                 </div>
               ))}
             </div>
           ) : featuredServices.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {featuredServices.map((svc, i) => (
                 <motion.div
                   key={svc.id}
@@ -307,22 +301,20 @@ export default function HomePage() {
                   animate={servicesInView ? 'visible' : 'hidden'}
                 >
                   <Link href={`/es/services/${svc.id}`}>
-                    <div className="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:-translate-y-1">
-                      <div className="relative h-48 overflow-hidden">
+                    <div className="group bg-[#f5f5f7] rounded-[28px] overflow-hidden transition-all duration-300 hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1">
+                      <div className="relative h-[220px] overflow-hidden bg-gray-200">
                         <img
                           src={svc.image || pickServiceImage(svc.name)}
                           alt={svc.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent" />
-                        <h3 className="absolute bottom-4 left-4 right-4 text-lg font-bold text-white">
-                          {svc.name}
-                        </h3>
                       </div>
-                      <div className="p-5">
-                        <p className="text-gray-500 text-sm leading-relaxed">
-                          {svc.description?.slice(0, 90) +
-                            ((svc.description?.length || 0) > 90 ? '...' : '')}
+                      <div className="p-7 bg-white group-hover:bg-gray-50/50 transition-colors">
+                        <h3 className="text-[19px] font-semibold text-gray-900 tracking-tight mb-2">
+                           {svc.name}
+                        </h3>
+                        <p className="text-[14px] font-medium text-gray-500 leading-relaxed">
+                          {svc.description?.slice(0, 90) + ((svc.description?.length || 0) > 90 ? '...' : '')}
                         </p>
                       </div>
                     </div>
@@ -331,59 +323,40 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              Pronto anadiremos nuestros servicios. Vuelve en unos dias.
+            <div className="text-center text-[16px] font-medium text-gray-500 py-12 bg-gray-50 rounded-[28px] border border-gray-100 border-dashed">
+              Descubriendo servicios en breves.
             </div>
           )}
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={servicesInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-center mt-14"
-          >
-            <Link href="/es/services">
-              <Button className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 hover:scale-[1.02]">
-                Ver Todos los Servicios
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
-          </motion.div>
         </div>
       </section>
 
       {/* ============================================================ */}
       {/*  STATS                                                        */}
       {/* ============================================================ */}
-      <section ref={statsRef} className="py-24 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: countPatients, suffix: '+', label: 'Pacientes Atendidos', format: true },
-              {
-                value: professionalsCount !== null ? countProfessionals : null,
-                suffix: '+',
-                label: 'Profesionales',
-                format: false,
-              },
-              { value: countYears, suffix: '', label: 'Anos de Experiencia', format: false },
-              { value: countSatisfaction, suffix: '%', label: 'Satisfaccion', format: false },
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                custom={i}
-                variants={fadeUp}
-                initial="hidden"
-                animate={statsInView ? 'visible' : 'hidden'}
-              >
-                <div className="text-5xl md:text-6xl font-bold tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                  {stat.value !== null
-                    ? `${stat.format ? stat.value.toLocaleString('es-ES') : stat.value}${stat.suffix}`
-                    : '\u2014'}
-                </div>
-                <p className="text-gray-500 text-lg">{stat.label}</p>
-              </motion.div>
-            ))}
+      <section ref={statsRef} className="py-24 relative overflow-hidden">
+        <div className="container mx-auto px-4 max-w-[1200px]">
+          <div className="bg-white/80 backdrop-blur-xl rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-white p-12">
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-10 text-center">
+               {[
+                 { value: countPatients, suffix: '+', label: 'Personas Atendidas', format: true },
+                 { value: professionalsCount !== null ? countProfessionals : null, suffix: ' Doc.', label: 'Profesionales', format: false },
+                 { value: countYears, suffix: '', label: 'Años Operando', format: false },
+                 { value: countSatisfaction, suffix: '%', label: 'Satisfacción', format: false },
+               ].map((stat, i) => (
+                 <motion.div
+                   key={stat.label}
+                   custom={i}
+                   variants={fadeUp}
+                   initial="hidden"
+                   animate={statsInView ? 'visible' : 'hidden'}
+                 >
+                   <div className="text-[42px] sm:text-[56px] font-extrabold tracking-tight mb-2 text-gray-900 leading-none">
+                     {stat.value !== null ? `${stat.format ? stat.value.toLocaleString('es-ES') : stat.value}${stat.suffix}` : '—'}
+                   </div>
+                   <p className="text-[15px] font-medium text-gray-500">{stat.label}</p>
+                 </motion.div>
+               ))}
+             </div>
           </div>
         </div>
       </section>
@@ -392,26 +365,20 @@ export default function HomePage() {
       {/*  TESTIMONIALS                                                 */}
       {/* ============================================================ */}
       {testimonials.length > 0 && (
-        <section ref={testimonialsRef} className="py-24 bg-gray-50/50">
-          <div className="container mx-auto px-4">
+        <section ref={testimonialsRef} className="py-32 bg-white">
+          <div className="container mx-auto px-4 max-w-[1200px]">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={testimonialsInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-14"
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="text-center mb-20"
             >
-              <span className="uppercase tracking-[0.2em] text-sm font-semibold text-blue-600 mb-4 block">
-                Testimonios
-              </span>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-3">
-                Historias reales, resultados reales
+              <h2 className="text-[36px] sm:text-[48px] font-bold text-gray-900 tracking-tight mb-4">
+                No confíes en nosotros.<br />Confía en ellos.
               </h2>
-              <p className="text-lg text-gray-500 max-w-2xl mx-auto">
-                Opiniones de personas que ya confian en nuestro equipo.
-              </p>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {testimonials.map((review, i) => (
                 <motion.article
                   key={review.id}
@@ -419,31 +386,22 @@ export default function HomePage() {
                   variants={fadeUp}
                   initial="hidden"
                   animate={testimonialsInView ? 'visible' : 'hidden'}
-                  className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
+                  className="bg-[#f5f5f7] rounded-[28px] p-8 transition-transform duration-300 hover:-translate-y-2"
                 >
-                  <Quote className="w-8 h-8 text-blue-200 mb-4" />
-                  <p className="text-gray-600 leading-relaxed mb-6 text-[15px]">
-                    {review.comment}
+                  <Quote className="w-10 h-10 text-gray-300 mb-6" />
+                  <p className="text-gray-900 font-medium leading-relaxed mb-8 text-[16px]">
+                    "{review.comment}"
                   </p>
-                  <div className="flex items-center gap-0.5 mb-4">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`w-4 h-4 ${
-                          s <= review.rating
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-200'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="font-semibold text-gray-900 text-sm">
-                      {review.client_name}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {review.service_name} &middot; con {review.professional_name}
-                    </p>
+                  <div className="flex flex-col gap-1 mt-auto">
+                     <div className="flex items-center gap-1 mb-2">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                           <Star key={s} className={`w-4 h-4 ${s <= review.rating ? 'fill-[#0071e3] text-[#0071e3]' : 'text-gray-300'}`} />
+                        ))}
+                     </div>
+                     <p className="text-[15px] font-bold text-gray-900 tracking-tight">{review.client_name}</p>
+                     <p className="text-[13px] font-medium text-gray-500">
+                        Tratamiento con {review.professional_name}
+                     </p>
                   </div>
                 </motion.article>
               ))}
@@ -455,12 +413,8 @@ export default function HomePage() {
       {/* ============================================================ */}
       {/*  CTA                                                          */}
       {/* ============================================================ */}
-      <section ref={ctaRef} className="relative py-32 gradient-hero text-white overflow-hidden">
-        {/* Floating gradient orbs */}
-        <div className="absolute top-1/3 -left-20 w-[400px] h-[400px] rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/3 -right-20 w-[350px] h-[350px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 container mx-auto px-4 text-center max-w-3xl">
+      <section ref={ctaRef} className="py-32 bg-[#0071e3] text-white">
+        <div className="container mx-auto px-4 text-center max-w-[800px]">
           <motion.div
             variants={staggerContainer}
             initial="hidden"
@@ -470,35 +424,28 @@ export default function HomePage() {
             <motion.h2
               variants={fadeUp}
               custom={0}
-              className="text-4xl md:text-6xl font-bold tracking-tight leading-tight"
+              className="text-[40px] sm:text-[56px] font-bold tracking-tight leading-[1.1]"
             >
-              Comienza Tu Viaje Hacia{' '}
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                el Bienestar
-              </span>
+              Comienza hoy a priorizar<br />
+              tu salud.
             </motion.h2>
 
             <motion.p
               variants={fadeUp}
               custom={1}
-              className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
+              className="text-[20px] text-white/80 max-w-[600px] mx-auto font-medium"
             >
-              Unete a miles de personas que ya confian en nosotros para cuidar de su salud.
+               Únete a miles de personas que gestionan sus citas de manera inteligente con NeoCore.
             </motion.p>
 
             <motion.div
               variants={fadeUp}
               custom={2}
-              className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
+              className="flex justify-center pt-6"
             >
               <Link href="/es/register">
-                <Button className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-6 text-lg font-semibold rounded-full shadow-lg shadow-white/10 transition-all duration-300 hover:shadow-white/20 hover:scale-[1.02]">
-                  Crear Cuenta Gratis
-                </Button>
-              </Link>
-              <Link href="/es/contact">
-                <Button className="bg-transparent text-white hover:bg-white/10 border border-white/30 px-8 py-6 text-lg font-semibold rounded-full transition-all duration-300 hover:border-white/60">
-                  Contactar
+                <Button className="bg-white hover:bg-gray-50 text-[#0071e3] px-10 py-7 rounded-full text-[17px] font-bold shadow-xl transition-all duration-300 hover:scale-[1.03]">
+                  Crear Cuenta y Reservar
                 </Button>
               </Link>
             </motion.div>

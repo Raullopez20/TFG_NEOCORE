@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { servicesAPI, Service } from '@/lib/api';
-import { Clock, Users, ArrowRight, Search } from 'lucide-react';
+import { Clock, Users, ArrowRight, Search, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const UNSPLASH = {
@@ -58,7 +58,7 @@ export default function ServicesPage() {
   const loadServices = async () => {
     try {
       const data = await servicesAPI.list();
-      setServices(data);
+      setServices(data.filter((s: Service) => s.is_active !== false));
     } catch (error) {
       console.error('Error loading services:', error);
     } finally {
@@ -72,81 +72,79 @@ export default function ServicesPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f5f5f7] pb-24">
       {/* Hero Section */}
-      <section className="gradient-hero py-20">
-        <div className="container mx-auto px-4">
+      <section className="bg-white/60 backdrop-blur-3xl pt-24 pb-32 border-b border-gray-200/50">
+        <div className="max-w-[1200px] mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-3xl mx-auto text-center"
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h1 className="text-5xl font-bold text-white mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-6">
+              <Sparkles className="w-4 h-4 text-[#0071e3]" />
+              <span className="text-[12px] font-bold tracking-wide uppercase text-[#0071e3]">Catálogo de Especialidades</span>
+            </div>
+            <h1 className="text-[44px] sm:text-[56px] font-extrabold text-gray-900 tracking-tight leading-tight mb-5">
               Nuestros Servicios
             </h1>
-            <p className="text-lg text-gray-400">
-              Descubre nuestra amplia gama de servicios profesionales de salud y bienestar
+            <p className="text-[19px] sm:text-[21px] text-gray-500 max-w-[600px] mx-auto font-medium">
+              Soluciones diseñadas por profesionales para llevar tu salud y bienestar al máximo nivel.
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* Search Bar */}
-      <div className="container mx-auto px-4 -mt-6 relative z-10">
+      <div className="max-w-[800px] mx-auto px-4 -mt-9 relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-apple-lg p-4 mb-10 max-w-2xl mx-auto"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="bg-white/80 backdrop-blur-xl rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-2 border border-white"
         >
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="relative flex items-center">
+            <Search className="absolute left-5 text-gray-400 w-[20px] h-[20px]" />
             <input
               type="text"
-              placeholder="Buscar servicios..."
+              placeholder="Ej. Fisioterapia, Masaje, Coaching..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-premium w-full pl-12 pr-4 py-3"
+              className="w-full bg-transparent pl-14 pr-6 py-4 text-[16px] font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
             />
           </div>
         </motion.div>
       </div>
 
       {/* Services Grid */}
-      <div className="container mx-auto px-4 pb-20">
+      <div className="max-w-[1200px] mx-auto px-4 mt-16">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-apple overflow-hidden animate-pulse">
-                <div className="h-56 bg-gray-200" />
-                <div className="p-6 space-y-3">
-                  <div className="h-5 bg-gray-200 rounded-lg w-3/4" />
-                  <div className="h-4 bg-gray-100 rounded-lg w-full" />
-                  <div className="h-4 bg-gray-100 rounded-lg w-2/3" />
-                  <div className="flex gap-4 pt-2">
-                    <div className="h-4 bg-gray-100 rounded-lg w-20" />
-                    <div className="h-4 bg-gray-100 rounded-lg w-28" />
-                  </div>
-                  <div className="h-11 bg-gray-200 rounded-xl w-full mt-4" />
+              <div key={i} className="bg-gray-50 rounded-[28px] overflow-hidden animate-pulse border border-gray-100">
+                <div className="h-[240px] bg-gray-200" />
+                <div className="p-7 space-y-4">
+                   <div className="h-6 bg-gray-200 rounded-full w-2/3" />
+                   <div className="h-4 bg-gray-200 rounded-full w-full" />
+                   <div className="h-10 bg-gray-200 rounded-[12px] w-full mt-4" />
                 </div>
               </div>
             ))}
           </div>
         ) : filteredServices.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5">
-              <Search className="w-9 h-9 text-gray-400" />
+          <div className="text-center py-24 bg-white/60 backdrop-blur-xl rounded-[32px] border border-white shadow-sm max-w-2xl mx-auto">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-[20px] font-semibold text-gray-900 mb-2 tracking-tight">
               No se encontraron servicios
             </h3>
-            <p className="text-gray-500">
-              Intenta con otro término de búsqueda
+            <p className="text-[15px] font-medium text-gray-500">
+              Prueba a cambiar el término de búsqueda.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredServices.map((service, index) => (
               <ServiceCard key={service.id} service={service} index={index} />
             ))}
@@ -162,51 +160,49 @@ function ServiceCard({ service, index }: { service: Service; index: number }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.08 }}
-      className="bg-white rounded-2xl overflow-hidden shadow-apple hover-lift group"
+      transition={{ duration: 0.5, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
+      className="group bg-white/80 backdrop-blur-xl rounded-[28px] overflow-hidden border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all hover:-translate-y-1"
     >
       {/* Image */}
-      <div className="relative h-56 overflow-hidden">
+      <div className="relative h-[240px] overflow-hidden bg-gray-100">
         <Image
           src={service.image || getServiceImage(service.name)}
           alt={service.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          className="object-cover group-hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
           unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         {service.price && (
-          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg">
-            <span className="text-lg font-bold text-gray-900">{service.price}€</span>
+          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-lg">
+            <span className="text-[14px] font-bold text-gray-900">{service.price}€</span>
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
-        <p className="text-gray-500 mb-4 line-clamp-2 text-sm leading-relaxed">{service.description}</p>
+      <div className="p-7">
+        <h3 className="text-[20px] font-bold text-gray-900 mb-3 tracking-tight leading-tight">{service.name}</h3>
+        <p className="text-gray-500 mb-6 line-clamp-2 text-[14px] leading-relaxed font-medium">{service.description}</p>
 
         {/* Meta Info */}
-        <div className="flex items-center gap-4 mb-5 text-sm text-gray-400">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4" />
+        <div className="flex items-center gap-5 mb-6 text-[13px] text-gray-600 font-medium">
+          <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-[10px] border border-gray-100">
+            <Clock className="w-4 h-4 text-gray-400" />
             <span>{service.duration_minutes} min</span>
           </div>
           {service.available_professionals_count > 0 && (
             <div className="flex items-center gap-1.5">
-              <Users className="w-4 h-4" />
-              <span>{service.available_professionals_count} profesionales</span>
+              <Users className="w-4 h-4 text-gray-400" />
+              <span>{service.available_professionals_count} prof.</span>
             </div>
           )}
         </div>
 
         {/* CTA */}
         <Link href={`/es/services/${service.id}`}>
-          <Button className="w-full bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
+          <Button className="w-full bg-gray-900 text-white rounded-[14px] h-12 text-[15px] font-semibold hover:bg-[#0071e3] transition-colors">
             Ver Detalles
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
         </Link>
       </div>
