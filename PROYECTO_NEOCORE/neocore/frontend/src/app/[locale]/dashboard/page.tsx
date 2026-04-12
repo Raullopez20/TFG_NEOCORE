@@ -21,16 +21,16 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-const containerStagger = {
+const containerStagger: any = {
   hidden: {},
   show: {
     transition: { staggerChildren: 0.1, delayChildren: 0.1 },
   },
 };
 
-const fadeUp = {
+const fadeUp: any = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
 
 export default function DashboardPage() {
@@ -162,7 +162,7 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="mb-12"
         >
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -246,7 +246,7 @@ export default function DashboardPage() {
            <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
             className="bg-white/80 backdrop-blur-xl rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.06)] border border-white p-7 sm:p-8 flex flex-col"
           >
             <div className="flex items-center justify-between mb-8">

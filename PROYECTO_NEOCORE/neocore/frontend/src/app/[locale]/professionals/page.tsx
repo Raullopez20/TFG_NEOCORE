@@ -58,7 +58,7 @@ export default function ProfessionalsPage() {
            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
             >
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-50 border border-purple-100 mb-6">
                 <Sparkles className="w-4 h-4 text-[#5E5CE6]" />
@@ -139,7 +139,7 @@ function ProfessionalCard({ professional, index }: { professional: Professional,
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.5, delay: index * 0.1, ease: "easeOut" }}
       className="bg-white/80 backdrop-blur-xl rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] border border-white overflow-hidden transition-all duration-300 group hover:-translate-y-1"
     >
       <div className="relative w-full h-[280px] overflow-hidden bg-gray-100">

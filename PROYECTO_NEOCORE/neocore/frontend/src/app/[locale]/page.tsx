@@ -36,16 +36,16 @@ function pickServiceImage(name: string): string {
 /* ------------------------------------------------------------------ */
 /*  Reusable animation variants                                        */
 /* ------------------------------------------------------------------ */
-const fadeUp = {
+const fadeUp: any = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+    transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" },
   }),
 };
 
-const staggerContainer = {
+const staggerContainer: any = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.1 } },
 };
@@ -198,7 +198,7 @@ export default function HomePage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={featuresInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
             className="text-center mb-20"
           >
             <h2 className="text-[36px] sm:text-[48px] font-bold text-gray-900 tracking-tight mb-4">
@@ -259,7 +259,7 @@ export default function HomePage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={servicesInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
             className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6"
           >
             <div>
@@ -370,7 +370,7 @@ export default function HomePage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={testimonialsInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
               className="text-center mb-20"
             >
               <h2 className="text-[36px] sm:text-[48px] font-bold text-gray-900 tracking-tight mb-4">

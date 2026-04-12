@@ -94,7 +94,7 @@ export default function RegisterPage() {
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
           className="bg-white/80 backdrop-blur-2xl px-8 sm:px-10 py-10 rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/40"
         >
           {/* Back Nav */}
