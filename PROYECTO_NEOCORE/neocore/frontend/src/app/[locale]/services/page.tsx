@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { servicesAPI, Service } from '@/lib/api';
-import { Calendar, Clock, Users, ArrowRight, Search } from 'lucide-react';
+import { Clock, Users, ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const UNSPLASH = {
@@ -73,20 +74,32 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-16">
+      <section className="gradient-hero py-20">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Nuestros Servicios</h1>
-            <p className="text-xl text-blue-100">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="max-w-3xl mx-auto text-center"
+          >
+            <h1 className="text-5xl font-bold text-white mb-4">
+              Nuestros Servicios
+            </h1>
+            <p className="text-lg text-gray-400">
               Descubre nuestra amplia gama de servicios profesionales de salud y bienestar
             </p>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </section>
 
-      {/* Search and Filter */}
-      <div className="container mx-auto px-4 -mt-8">
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+      {/* Search Bar */}
+      <div className="container mx-auto px-4 -mt-6 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-apple-lg p-4 mb-10 max-w-2xl mx-auto"
+        >
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -94,40 +107,48 @@ export default function ServicesPage() {
               placeholder="Buscar servicios..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="input-premium w-full pl-12 pr-4 py-3"
             />
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Services Grid */}
-      <div className="container mx-auto px-4 pb-16">
+      <div className="container mx-auto px-4 pb-20">
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-xl shadow-md p-6 animate-pulse">
-                <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
-                <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div key={i} className="bg-white rounded-2xl shadow-apple overflow-hidden animate-pulse">
+                <div className="h-56 bg-gray-200" />
+                <div className="p-6 space-y-3">
+                  <div className="h-5 bg-gray-200 rounded-lg w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded-lg w-full" />
+                  <div className="h-4 bg-gray-100 rounded-lg w-2/3" />
+                  <div className="flex gap-4 pt-2">
+                    <div className="h-4 bg-gray-100 rounded-lg w-20" />
+                    <div className="h-4 bg-gray-100 rounded-lg w-28" />
+                  </div>
+                  <div className="h-11 bg-gray-200 rounded-xl w-full mt-4" />
+                </div>
               </div>
             ))}
           </div>
         ) : filteredServices.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-12 h-12 text-gray-400" />
+          <div className="text-center py-20">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5">
+              <Search className="w-9 h-9 text-gray-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               No se encontraron servicios
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-500">
               Intenta con otro término de búsqueda
             </p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredServices.map((service) => (
-              <ServiceCard key={service.id} service={service} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredServices.map((service, index) => (
+              <ServiceCard key={service.id} service={service} index={index} />
             ))}
           </div>
         )}
@@ -136,39 +157,45 @@ export default function ServicesPage() {
   );
 }
 
-function ServiceCard({ service }: { service: Service }) {
+function ServiceCard({ service, index }: { service: Service; index: number }) {
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.08 }}
+      className="bg-white rounded-2xl overflow-hidden shadow-apple hover-lift group"
+    >
       {/* Image */}
-      <div className="relative h-48 bg-gradient-to-br from-blue-500 to-blue-700 overflow-hidden">
+      <div className="relative h-56 overflow-hidden">
         <Image
           src={service.image || getServiceImage(service.name)}
           alt={service.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover group-hover:scale-110 transition-transform duration-300"
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
           unoptimized
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         {service.price && (
-          <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full shadow-lg">
-            <span className="text-lg font-bold text-blue-600">€{service.price}</span>
+          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl shadow-lg">
+            <span className="text-lg font-bold text-gray-900">{service.price}€</span>
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{service.name}</h3>
-        <p className="text-gray-600 mb-4 line-clamp-2">{service.description}</p>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
+        <p className="text-gray-500 mb-4 line-clamp-2 text-sm leading-relaxed">{service.description}</p>
 
         {/* Meta Info */}
-        <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-4 mb-5 text-sm text-gray-400">
+          <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4" />
             <span>{service.duration_minutes} min</span>
           </div>
           {service.available_professionals_count > 0 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <Users className="w-4 h-4" />
               <span>{service.available_professionals_count} profesionales</span>
             </div>
@@ -177,12 +204,12 @@ function ServiceCard({ service }: { service: Service }) {
 
         {/* CTA */}
         <Link href={`/es/services/${service.id}`}>
-          <Button className="w-full bg-blue-600 hover:bg-blue-700 group-hover:shadow-lg transition-all">
+          <Button className="w-full bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors">
             Ver Detalles
             <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
           </Button>
         </Link>
       </div>
-    </div>
+    </motion.div>
   );
 }

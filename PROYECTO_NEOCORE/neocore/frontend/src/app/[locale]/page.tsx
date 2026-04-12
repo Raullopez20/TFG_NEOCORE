@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Calendar, Users, Shield, Sparkles, Star, Quote } from 'lucide-react';
+import { motion, useInView } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   servicesAPI,
@@ -13,6 +14,9 @@ import {
   Review,
 } from '@/lib/api';
 
+/* ------------------------------------------------------------------ */
+/*  Fallback images for services without a custom image                */
+/* ------------------------------------------------------------------ */
 const FALLBACK_SERVICE_IMAGES: Record<string, string> = {
   fisio: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=300&fit=crop',
   nutri: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=300&fit=crop',
@@ -29,19 +33,76 @@ function pickServiceImage(name: string): string {
   return FALLBACK_SERVICE_IMAGES.default;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Reusable animation variants                                        */
+/* ------------------------------------------------------------------ */
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.12, duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+  }),
+};
+
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12 } },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Animated counter hook                                              */
+/* ------------------------------------------------------------------ */
+function useCountUp(target: number, inView: boolean, duration = 1800) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    let start = 0;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      start = Math.floor(eased * target);
+      setCount(start);
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [inView, target, duration]);
+  return count;
+}
+
+/* ================================================================== */
+/*  Page component                                                     */
+/* ================================================================== */
 export default function HomePage() {
   const [featuredServices, setFeaturedServices] = useState<Service[]>([]);
   const [professionalsCount, setProfessionalsCount] = useState<number | null>(null);
   const [testimonials, setTestimonials] = useState<Review[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
+  /* Section refs for scroll-triggered animations */
+  const featuresRef = useRef(null);
+  const servicesRef = useRef(null);
+  const statsRef = useRef(null);
+  const testimonialsRef = useRef(null);
+  const ctaRef = useRef(null);
+
+  const featuresInView = useInView(featuresRef, { once: true, amount: 0.2 });
+  const servicesInView = useInView(servicesRef, { once: true, amount: 0.15 });
+  const statsInView = useInView(statsRef, { once: true, amount: 0.3 });
+  const testimonialsInView = useInView(testimonialsRef, { once: true, amount: 0.15 });
+  const ctaInView = useInView(ctaRef, { once: true, amount: 0.3 });
+
+  /* Animated stat counters */
+  const countPatients = useCountUp(10000, statsInView);
+  const countProfessionals = useCountUp(professionalsCount ?? 0, statsInView);
+  const countYears = useCountUp(15, statsInView);
+  const countSatisfaction = useCountUp(98, statsInView);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        // Carga en paralelo de servicios destacados, profesionales (para el
-        // contador) y resenas publicas (para los testimonios). Cada llamada
-        // tiene catch independiente para que un fallo no rompa la pagina.
         const [services, professionals, reviews] = await Promise.all([
           servicesAPI.list().catch(() => [] as Service[]),
           professionalsAPI.list().catch(() => [] as Professional[]),
@@ -50,7 +111,6 @@ export default function HomePage() {
         if (cancelled) return;
         setFeaturedServices(services.filter((s) => s.is_active !== false).slice(0, 4));
         setProfessionalsCount(professionals.length);
-        // Solo testimonios con valoracion >= 4 y comentario para vitrina
         setTestimonials(
           reviews
             .filter((r) => r.rating >= 4 && r.comment && r.comment.trim().length > 0)
@@ -67,98 +127,165 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative h-screen bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&h=1080&fit=crop')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-        <div className="relative container mx-auto px-4 h-full flex items-center">
-          <div className="max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Tu Salud y Bienestar,
-              <span className="text-blue-200"> Nuestra Prioridad</span>
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100">
-              Servicios médicos profesionales con los mejores especialistas. 
-              Reserva tu cita en segundos.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+    <div className="min-h-screen overflow-x-hidden">
+      {/* ============================================================ */}
+      {/*  HERO                                                         */}
+      {/* ============================================================ */}
+      <section className="relative min-h-screen flex items-center justify-center gradient-hero text-white overflow-hidden">
+        {/* Floating gradient orbs */}
+        <div className="absolute top-1/4 -left-32 w-[500px] h-[500px] rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-32 w-[400px] h-[400px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 container mx-auto px-4 text-center max-w-4xl">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-8"
+          >
+            <motion.p
+              variants={fadeUp}
+              custom={0}
+              className="uppercase tracking-[0.3em] text-sm text-blue-300/80 font-medium"
+            >
+              NeoCore Health
+            </motion.p>
+
+            <motion.h1
+              variants={fadeUp}
+              custom={1}
+              className="text-6xl md:text-8xl font-bold tracking-tight leading-[0.95]"
+            >
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-400">
+                Tu Bienestar,
+              </span>
+              <br />
+              <span className="text-white">Reimaginado</span>
+            </motion.h1>
+
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
+            >
+              Servicios de salud de nueva generacion. Profesionales de elite,
+              tecnologia de vanguardia y una experiencia sin fricciones.
+            </motion.p>
+
+            <motion.div
+              variants={fadeUp}
+              custom={3}
+              className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
+            >
               <Link href="/es/services">
-                <Button className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-6 text-lg font-semibold">
+                <Button className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-6 text-lg font-semibold rounded-full shadow-lg shadow-white/10 transition-all duration-300 hover:shadow-white/20 hover:scale-[1.02]">
                   Explorar Servicios
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
               <Link href="/es/about">
-                <Button className="bg-blue-700 text-white hover:bg-blue-800 border-2 border-white px-8 py-6 text-lg font-semibold">
-                  Conocer Más
+                <Button className="bg-transparent text-white hover:bg-white/10 border border-white/30 px-8 py-6 text-lg font-semibold rounded-full transition-all duration-300 hover:border-white/60">
+                  Conocer Mas
                 </Button>
               </Link>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent"></div>
+
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-white">
+      {/* ============================================================ */}
+      {/*  FEATURES                                                     */}
+      {/* ============================================================ */}
+      <section ref={featuresRef} className="py-24 bg-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              ¿Por qué Elegir NeoCore?
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={featuresInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <span className="uppercase tracking-[0.2em] text-sm font-semibold text-blue-600 mb-4 block">
+              Por que NeoCore
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
+              Disenado para tu salud
             </h2>
-            <p className="text-xl text-gray-600">
-              Servicios de calidad con atención personalizada
-            </p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <FeatureCard
-              icon={<Calendar className="w-12 h-12 text-blue-600" />}
-              title="Reserva Fácil"
-              description="Sistema de reservas intuitivo y rápido para todas nuestras especialidades."
-            />
-            <FeatureCard
-              icon={<Users className="w-12 h-12 text-blue-600" />}
-              title="Profesionales Expertos"
-              description="Equipo multidisciplinar de profesionales certificados y con experiencia."
-            />
-            <FeatureCard
-              icon={<Shield className="w-12 h-12 text-blue-600" />}
-              title="Seguro y Confiable"
-              description="Tus datos están protegidos con los más altos estándares de seguridad."
-            />
-            <FeatureCard
-              icon={<Sparkles className="w-12 h-12 text-blue-600" />}
-              title="Atención Personalizada"
-              description="Cada tratamiento adaptado a tus necesidades y objetivos específicos."
-            />
+            {[
+              {
+                icon: Calendar,
+                title: 'Reserva Facil',
+                description: 'Sistema de reservas intuitivo y rapido para todas nuestras especialidades.',
+              },
+              {
+                icon: Users,
+                title: 'Profesionales Expertos',
+                description: 'Equipo multidisciplinar de profesionales certificados y con experiencia.',
+              },
+              {
+                icon: Shield,
+                title: 'Seguro y Confiable',
+                description: 'Tus datos estan protegidos con los mas altos estandares de seguridad.',
+              },
+              {
+                icon: Sparkles,
+                title: 'Atencion Personalizada',
+                description: 'Cada tratamiento adaptado a tus necesidades y objetivos especificos.',
+              },
+            ].map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                custom={i}
+                variants={fadeUp}
+                initial="hidden"
+                animate={featuresInView ? 'visible' : 'hidden'}
+                className="group bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors duration-300">
+                  <feature.icon className="w-7 h-7 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
+                <p className="text-gray-500 leading-relaxed">{feature.description}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Services Preview */}
-      <section className="py-20 bg-gray-50">
+      {/* ============================================================ */}
+      {/*  SERVICES PREVIEW                                             */}
+      {/* ============================================================ */}
+      <section ref={servicesRef} className="py-24 bg-gray-50/50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Nuestras Especialidades</h2>
-            <p className="text-xl text-gray-600 mb-8">
-              Servicios profesionales para tu salud integral
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={servicesInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-14"
+          >
+            <span className="uppercase tracking-[0.2em] text-sm font-semibold text-blue-600 mb-4 block">
+              Nuestras Especialidades
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-4">
+              Servicios profesionales
+            </h2>
+            <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+              Soluciones integrales para tu salud y bienestar
             </p>
-          </div>
+          </motion.div>
 
           {dataLoading ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[0, 1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-xl shadow-md overflow-hidden animate-pulse"
+                  className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse"
                 >
                   <div className="h-48 bg-gray-200" />
                   <div className="p-6 space-y-3">
@@ -171,191 +298,213 @@ export default function HomePage() {
             </div>
           ) : featuredServices.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredServices.map((svc) => (
-                <Link key={svc.id} href={`/es/services/${svc.id}`}>
-                  <SpecialtyCard
-                    title={svc.name}
-                    description={
-                      svc.description?.slice(0, 90) +
-                      ((svc.description?.length || 0) > 90 ? '…' : '')
-                    }
-                    image={svc.image || pickServiceImage(svc.name)}
-                  />
-                </Link>
+              {featuredServices.map((svc, i) => (
+                <motion.div
+                  key={svc.id}
+                  custom={i}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate={servicesInView ? 'visible' : 'hidden'}
+                >
+                  <Link href={`/es/services/${svc.id}`}>
+                    <div className="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden hover:-translate-y-1">
+                      <div className="relative h-48 overflow-hidden">
+                        <img
+                          src={svc.image || pickServiceImage(svc.name)}
+                          alt={svc.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent" />
+                        <h3 className="absolute bottom-4 left-4 right-4 text-lg font-bold text-white">
+                          {svc.name}
+                        </h3>
+                      </div>
+                      <div className="p-5">
+                        <p className="text-gray-500 text-sm leading-relaxed">
+                          {svc.description?.slice(0, 90) +
+                            ((svc.description?.length || 0) > 90 ? '...' : '')}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
               ))}
             </div>
           ) : (
             <div className="text-center text-gray-500 py-8">
-              Pronto añadiremos nuestros servicios. Vuelve en unos días.
+              Pronto anadiremos nuestros servicios. Vuelve en unos dias.
             </div>
           )}
 
-          <div className="text-center mt-12">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={servicesInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-center mt-14"
+          >
             <Link href="/es/services">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg">
+              <Button className="bg-gray-900 hover:bg-gray-800 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 hover:scale-[1.02]">
                 Ver Todos los Servicios
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-white">
+      {/* ============================================================ */}
+      {/*  STATS                                                        */}
+      {/* ============================================================ */}
+      <section ref={statsRef} className="py-24 bg-white">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-5xl font-bold text-blue-600 mb-2">10,000+</div>
-              <p className="text-gray-600 text-lg">Pacientes Atendidos</p>
-            </div>
-            <div>
-              <div className="text-5xl font-bold text-blue-600 mb-2">
-                {professionalsCount !== null ? `${professionalsCount}+` : '—'}
-              </div>
-              <p className="text-gray-600 text-lg">Profesionales</p>
-            </div>
-            <div>
-              <div className="text-5xl font-bold text-blue-600 mb-2">15</div>
-              <p className="text-gray-600 text-lg">Años de Experiencia</p>
-            </div>
-            <div>
-              <div className="text-5xl font-bold text-blue-600 mb-2">98%</div>
-              <p className="text-gray-600 text-lg">Satisfacción</p>
-            </div>
+            {[
+              { value: countPatients, suffix: '+', label: 'Pacientes Atendidos', format: true },
+              {
+                value: professionalsCount !== null ? countProfessionals : null,
+                suffix: '+',
+                label: 'Profesionales',
+                format: false,
+              },
+              { value: countYears, suffix: '', label: 'Anos de Experiencia', format: false },
+              { value: countSatisfaction, suffix: '%', label: 'Satisfaccion', format: false },
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                custom={i}
+                variants={fadeUp}
+                initial="hidden"
+                animate={statsInView ? 'visible' : 'hidden'}
+              >
+                <div className="text-5xl md:text-6xl font-bold tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+                  {stat.value !== null
+                    ? `${stat.format ? stat.value.toLocaleString('es-ES') : stat.value}${stat.suffix}`
+                    : '\u2014'}
+                </div>
+                <p className="text-gray-500 text-lg">{stat.label}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonios reales: solo se renderiza si hay resenas publicadas */}
+      {/* ============================================================ */}
+      {/*  TESTIMONIALS                                                 */}
+      {/* ============================================================ */}
       {testimonials.length > 0 && (
-        <section className="py-24 bg-white">
+        <section ref={testimonialsRef} className="py-24 bg-gray-50/50">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-14">
-              <span className="inline-block px-3 py-1 mb-3 text-xs font-semibold tracking-wider uppercase rounded-full bg-blue-50 text-blue-700">
-                Lo que dicen nuestros clientes
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={testimonialsInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-14"
+            >
+              <span className="uppercase tracking-[0.2em] text-sm font-semibold text-blue-600 mb-4 block">
+                Testimonios
               </span>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight mb-3">
                 Historias reales, resultados reales
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Opiniones publicadas por personas que ya han confiado en nuestro equipo.
+              <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+                Opiniones de personas que ya confian en nuestro equipo.
               </p>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {testimonials.map((review) => (
-                <article
+              {testimonials.map((review, i) => (
+                <motion.article
                   key={review.id}
-                  className="relative bg-gradient-to-br from-blue-50 to-white border border-blue-100 rounded-2xl p-7 shadow-sm hover:shadow-lg transition-shadow"
+                  custom={i}
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate={testimonialsInView ? 'visible' : 'hidden'}
+                  className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300"
                 >
-                  <Quote className="w-8 h-8 text-blue-300 mb-3" />
-                  <p className="text-gray-700 leading-relaxed mb-5 text-sm">
+                  <Quote className="w-8 h-8 text-blue-200 mb-4" />
+                  <p className="text-gray-600 leading-relaxed mb-6 text-[15px]">
                     {review.comment}
                   </p>
-                  <div className="flex items-center gap-0.5 mb-3">
+                  <div className="flex items-center gap-0.5 mb-4">
                     {[1, 2, 3, 4, 5].map((s) => (
                       <Star
                         key={s}
                         className={`w-4 h-4 ${
                           s <= review.rating
                             ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
+                            : 'text-gray-200'
                         }`}
                       />
                     ))}
                   </div>
-                  <div className="border-t border-blue-100 pt-3">
+                  <div className="border-t border-gray-100 pt-4">
                     <p className="font-semibold text-gray-900 text-sm">
                       {review.client_name}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {review.service_name} · con {review.professional_name}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {review.service_name} &middot; con {review.professional_name}
                     </p>
                   </div>
-                </article>
+                </motion.article>
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* CTA Section */}
-      <section className="relative py-24 bg-gradient-to-br from-blue-600 to-blue-800 text-white overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=1920&h=400&fit=crop')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-        <div className="relative container mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Comienza Tu Viaje Hacia el Bienestar
-          </h2>
-          <p className="text-xl mb-10 text-blue-100 max-w-2xl mx-auto">
-            Únete a miles de personas que ya confían en nosotros para cuidar de su salud
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/es/register">
-              <Button className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg font-semibold">
-                Crear Cuenta Gratis
-              </Button>
-            </Link>
-            <Link href="/es/contact">
-              <Button className="bg-blue-700 text-white hover:bg-blue-800 border-2 border-white px-8 py-4 text-lg font-semibold">
-                Contactar
-              </Button>
-            </Link>
-          </div>
+      {/* ============================================================ */}
+      {/*  CTA                                                          */}
+      {/* ============================================================ */}
+      <section ref={ctaRef} className="relative py-32 gradient-hero text-white overflow-hidden">
+        {/* Floating gradient orbs */}
+        <div className="absolute top-1/3 -left-20 w-[400px] h-[400px] rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/3 -right-20 w-[350px] h-[350px] rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 container mx-auto px-4 text-center max-w-3xl">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate={ctaInView ? 'visible' : 'hidden'}
+            className="space-y-8"
+          >
+            <motion.h2
+              variants={fadeUp}
+              custom={0}
+              className="text-4xl md:text-6xl font-bold tracking-tight leading-tight"
+            >
+              Comienza Tu Viaje Hacia{' '}
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
+                el Bienestar
+              </span>
+            </motion.h2>
+
+            <motion.p
+              variants={fadeUp}
+              custom={1}
+              className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed"
+            >
+              Unete a miles de personas que ya confian en nosotros para cuidar de su salud.
+            </motion.p>
+
+            <motion.div
+              variants={fadeUp}
+              custom={2}
+              className="flex flex-col sm:flex-row gap-4 justify-center pt-4"
+            >
+              <Link href="/es/register">
+                <Button className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-6 text-lg font-semibold rounded-full shadow-lg shadow-white/10 transition-all duration-300 hover:shadow-white/20 hover:scale-[1.02]">
+                  Crear Cuenta Gratis
+                </Button>
+              </Link>
+              <Link href="/es/contact">
+                <Button className="bg-transparent text-white hover:bg-white/10 border border-white/30 px-8 py-6 text-lg font-semibold rounded-full transition-all duration-300 hover:border-white/60">
+                  Contactar
+                </Button>
+              </Link>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
-    </div>
-  );
-}
-
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
-      <div className="flex justify-center mb-4">{icon}</div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  );
-}
-
-function SpecialtyCard({
-  title,
-  description,
-  image,
-}: {
-  title: string;
-  description: string;
-  image: string;
-}) {
-  return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
-      <div className="relative h-48 overflow-hidden">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-      </div>
-      <div className="p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-        <p className="text-gray-600">{description}</p>
-      </div>
     </div>
   );
 }

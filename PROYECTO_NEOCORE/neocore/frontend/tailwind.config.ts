@@ -44,6 +44,10 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      boxShadow: {
+        'apple': '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06)',
+        'apple-lg': '0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.10)',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
