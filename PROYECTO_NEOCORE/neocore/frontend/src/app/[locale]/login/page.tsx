@@ -5,41 +5,41 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { authAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Eye, EyeOff, CheckCircle, Check, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, ChevronLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('registered') === 'true') {
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      toast.success('Cuenta creada con éxito', {
+        description: 'Ya puedes iniciar sesión con tus credenciales.',
+      });
     }
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
       const response = await authAPI.login(formData.email, formData.password);
-      // dj-rest-auth puede devolver 'access_token'/'refresh_token' o 'access'/'refresh'
       localStorage.setItem('access_token', response.access_token || response.access);
       localStorage.setItem('refresh_token', response.refresh_token || response.refresh);
+      toast.success('Sesión iniciada', {
+        description: 'Bienvenido de nuevo a NeoCore.',
+      });
       router.push('/es/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.non_field_errors?.[0] || err.response?.data?.message || 'Credenciales incorrectas');
+      toast.error('No se pudo iniciar sesión', {
+        description: err.response?.data?.message || 'Revisa tu correo y contraseña e inténtalo de nuevo.',
+      });
     } finally {
       setLoading(false);
     }
@@ -50,186 +50,121 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* Left Panel - Brand Showcase */}
-      <div className="hidden lg:flex relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 flex-col items-center justify-center p-12">
-        {/* Floating gradient orbs */}
-        <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl" />
-
-        <div className="relative z-10 text-center space-y-8">
-          {/* Logo & Tagline */}
-          <div>
-            <h2 className="text-4xl font-bold text-white tracking-tight">NeoCore</h2>
-            <p className="text-blue-300 text-lg mt-2">Centro de Salud y Bienestar</p>
-          </div>
-
-          {/* Feature bullet points */}
-          <div className="space-y-4 mt-12 text-left max-w-xs mx-auto">
-            <div className="flex items-center gap-3 text-white/70">
-              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3.5 h-3.5 text-blue-400" />
-              </div>
-              <span className="text-sm">Gestion integral de pacientes</span>
-            </div>
-            <div className="flex items-center gap-3 text-white/70">
-              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3.5 h-3.5 text-blue-400" />
-              </div>
-              <span className="text-sm">Citas y reservas en tiempo real</span>
-            </div>
-            <div className="flex items-center gap-3 text-white/70">
-              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3.5 h-3.5 text-blue-400" />
-              </div>
-              <span className="text-sm">Panel de control avanzado</span>
-            </div>
-            <div className="flex items-center gap-3 text-white/70">
-              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-3.5 h-3.5 text-blue-400" />
-              </div>
-              <span className="text-sm">Seguridad y privacidad garantizada</span>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#f5f5f7]">
+      {/* Apple-like Ambient Background Blur */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <motion.div 
+          animate={{ scale: [1, 1.05, 1], rotate: [0, 5, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[10%] -right-[10%] w-[60%] h-[60%] rounded-full bg-blue-200/40 mix-blend-multiply filter blur-[120px]" 
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], rotate: [0, -5, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-indigo-200/40 mix-blend-multiply filter blur-[140px]" 
+        />
       </div>
 
-      {/* Right Panel - Login Form */}
-      <div className="flex items-center justify-center bg-white p-6 sm:p-12">
+      <div className="relative z-10 w-full max-w-md px-6 mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-sm"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="bg-white/80 backdrop-blur-2xl px-10 py-12 rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/40"
         >
-          {/* Back link */}
+          {/* Back Nav */}
           <Link
             href="/es"
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors mb-8 inline-block"
+            className="group flex items-center text-[13px] font-medium text-gray-400 hover:text-gray-800 transition-colors mb-8 -ml-2"
           >
-            &larr; Volver al inicio
+            <ChevronLeft className="w-4 h-4 mr-1 transition-transform group-hover:-translate-x-1" />
+            Volver
           </Link>
 
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Bienvenido de nuevo</h1>
-            <p className="text-gray-500 mt-2">Inicia sesion en tu cuenta</p>
+          <div className="text-center mb-10">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30">
+              <span className="text-white text-2xl font-semibold tracking-tighter">NC</span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 mb-2">Iniciar Sesión</h1>
+            <p className="text-[15px] text-gray-500">Usa tu cuenta NeoCore</p>
           </div>
 
-          {/* Success Message */}
-          {showSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-700"
-            >
-              <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">Registro exitoso. Ya puedes iniciar sesion.</span>
-            </motion.div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3 text-red-600"
-            >
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{error}</span>
-            </motion.div>
-          )}
-
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Correo Electronico
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="input-premium"
-                placeholder="tu@email.com"
-              />
+              <div className="relative group">
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder=" "
+                  className="peer w-full px-4 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                />
+                <label className="absolute left-4 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                  Correo electrónico
+                </label>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Contrasena
-              </label>
-              <div className="relative">
+              <div className="relative group">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="input-premium pr-11"
-                  placeholder="••••••••"
+                  placeholder=" "
+                  className="peer w-full px-4 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 pr-12"
                 />
+                <label className="absolute left-4 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                  Contraseña
+                </label>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="ml-2 text-sm text-gray-600">Recordarme</span>
-              </label>
-              <Link
-                href="/es/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Olvidaste tu contrasena?
+            <div className="pt-2 text-right">
+              <Link href="/es/forgot-password" className="text-[13px] font-medium text-blue-600 hover:text-blue-700 hover:underline inline-block transition-colors">
+                ¿Has olvidado tu contraseña?
               </Link>
             </div>
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full gradient-primary text-white rounded-xl py-3 font-medium hover:brightness-110 transition-all disabled:opacity-50"
+              className="w-full bg-[#0071e3] hover:bg-[#0077ED] text-white rounded-xl py-6 text-[15px] font-medium transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
             >
-              {loading ? 'Iniciando sesion...' : 'Iniciar Sesion'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  Iniciando...
+                </span>
+              ) : (
+                'Acceder'
+              )}
             </Button>
+
+            <div className="mt-8 text-center pt-6 border-t border-gray-100">
+              <p className="text-[13px] text-gray-500">
+                ¿Aún no tienes una cuenta Apple... digo, NeoCore?{' '}
+                <Link href="/es/register" className="text-[#0071e3] hover:underline font-medium ml-1">
+                  Crea una ahora.
+                </Link>
+              </p>
+            </div>
           </form>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">o</span>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              No tienes una cuenta?{' '}
-              <Link href="/es/register" className="text-blue-600 hover:text-blue-700 font-medium">
-                Registrate gratis
-              </Link>
-            </p>
-          </div>
         </motion.div>
       </div>
     </div>

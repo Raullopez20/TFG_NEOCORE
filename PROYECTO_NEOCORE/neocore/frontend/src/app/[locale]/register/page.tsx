@@ -6,19 +6,8 @@ import Link from 'next/link';
 import { authAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ArrowLeft,
-  Mail,
-  Lock,
-  User,
-  Phone,
-  Shield,
-  Clock,
-  Star,
-  Eye,
-  EyeOff,
-  AlertCircle,
-} from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -30,7 +19,6 @@ export default function RegisterPage() {
     last_name: '',
     phone: '',
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword1, setShowPassword1] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
@@ -38,18 +26,19 @@ export default function RegisterPage() {
   const passwordStrength = useMemo(() => {
     const len = formData.password1.length;
     if (len === 0) return { level: 0, color: 'bg-gray-200', label: '' };
-    if (len < 6) return { level: 1, color: 'bg-red-500', label: 'Debil' };
+    if (len < 6) return { level: 1, color: 'bg-red-500', label: 'Débil' };
     if (len < 10) return { level: 2, color: 'bg-yellow-500', label: 'Media' };
     return { level: 3, color: 'bg-green-500', label: 'Fuerte' };
   }, [formData.password1]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     if (formData.password1 !== formData.password2) {
-      setError('Las contrasenas no coinciden');
+      toast.error('Las contraseñas no coinciden', {
+        description: 'Asegúrate de que ambas contraseñas sean idénticas.',
+      });
       setLoading(false);
       return;
     }
@@ -59,21 +48,23 @@ export default function RegisterPage() {
       router.push('/es/login?registered=true');
     } catch (err: any) {
       const data = err.response?.data;
+      let errorMsg = 'Error al registrar usuario';
       if (typeof data === 'string') {
-        setError(data);
+        errorMsg = data;
       } else if (data?.detail) {
-        setError(Array.isArray(data.detail) ? data.detail.join(' ') : data.detail);
+        errorMsg = Array.isArray(data.detail) ? data.detail.join(' ') : data.detail;
       } else if (data?.message) {
-        setError(data.message);
+        errorMsg = data.message;
       } else if (data && typeof data === 'object') {
         const parts = Object.entries(data).map(([k, v]) => {
           const msg = Array.isArray(v) ? v.join(' ') : String(v);
           return msg ? `${k}: ${msg}` : '';
         }).filter(Boolean);
-        setError(parts.length ? parts.join('. ') : 'Error al registrar usuario');
+        if (parts.length) errorMsg = parts.join('. ');
       } else {
-        setError(err.message || 'Error al registrar usuario');
+        errorMsg = err.message || errorMsg;
       }
+      toast.error('Error de registro', { description: errorMsg });
     } finally {
       setLoading(false);
     }
@@ -83,329 +74,197 @@ export default function RegisterPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const benefits = [
-    {
-      icon: Shield,
-      title: 'Seguridad garantizada',
-      description: 'Tus datos protegidos con la mejor tecnologia',
-    },
-    {
-      icon: Clock,
-      title: 'Reserva en segundos',
-      description: 'Proceso rapido y sin complicaciones',
-    },
-    {
-      icon: Star,
-      title: 'Calidad premium',
-      description: 'Los mejores profesionales a tu disposicion',
-    },
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
-  };
-
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* LEFT PANEL */}
-      <div className="hidden lg:flex relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-950 to-indigo-950 flex-col items-center justify-center p-12">
-        {/* Floating orbs */}
-        <div className="absolute top-20 left-16 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl" />
-
-        <div className="relative z-10 max-w-md text-center">
-          {/* Branding */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-10"
-          >
-            <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">
-              Neo<span className="text-blue-400">Core</span>
-            </h2>
-            <div className="w-12 h-1 bg-blue-500 rounded-full mx-auto" />
-          </motion.div>
-
-          <motion.h3
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-2xl font-semibold text-white mb-10"
-          >
-            Unete a NeoCore
-          </motion.h3>
-
-          {/* Benefits */}
-          <div className="space-y-6">
-            {benefits.map((item, i) => (
-              <motion.div
-                key={item.title}
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 + i * 0.15 }}
-                className="flex items-start gap-4 text-left"
-              >
-                <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10">
-                  <item.icon className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium text-sm">{item.title}</p>
-                  <p className="text-blue-200/70 text-sm mt-0.5">{item.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-[#f5f5f7] py-12">
+      {/* Apple-like Ambient Background Blur */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <motion.div 
+          animate={{ scale: [1, 1.05, 1], rotate: [0, 5, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-[10%] -right-[10%] w-[60%] h-[60%] rounded-full bg-blue-200/40 mix-blend-multiply filter blur-[120px]" 
+        />
+        <motion.div 
+          animate={{ scale: [1, 1.1, 1], rotate: [0, -5, 0] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-indigo-200/40 mix-blend-multiply filter blur-[140px]" 
+        />
       </div>
 
-      {/* RIGHT PANEL */}
-      <div className="flex flex-col bg-white overflow-y-auto">
-        <div className="flex-1 flex items-center justify-center p-6 sm:p-10 lg:p-16">
-          <div className="w-full max-w-md">
-            {/* Back link */}
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Link
-                href="/es"
-                className="inline-flex items-center text-gray-500 hover:text-gray-800 text-sm mb-8 group transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                Volver al inicio
-              </Link>
-            </motion.div>
+      <div className="relative z-10 w-full max-w-[440px] px-6 mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="bg-white/80 backdrop-blur-2xl px-8 sm:px-10 py-10 rounded-[2rem] shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-white/40"
+        >
+          {/* Back Nav */}
+          <Link
+            href="/es"
+            className="group flex items-center text-[13px] font-medium text-gray-400 hover:text-gray-800 transition-colors mb-6 -ml-2"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1 transition-transform group-hover:-translate-x-1" />
+            Volver
+          </Link>
 
-            {/* Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="mb-8"
-            >
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Crear cuenta</h1>
-              <p className="text-gray-500">Completa tus datos para empezar</p>
-            </motion.div>
-
-            {/* Error */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -10, height: 0 }}
-                  className="mb-6 rounded-xl bg-red-50 border border-red-200 text-red-600 p-4 text-sm flex items-start gap-3 overflow-hidden"
-                >
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit}>
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-5"
-              >
-                {/* First name / Last name */}
-                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Nombre
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        name="first_name"
-                        value={formData.first_name}
-                        onChange={handleChange}
-                        required
-                        className="input-premium pl-10"
-                        placeholder="Juan"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Apellido
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        name="last_name"
-                        value={formData.last_name}
-                        onChange={handleChange}
-                        required
-                        className="input-premium pl-10"
-                        placeholder="Perez"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Email */}
-                <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Correo electronico
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="input-premium pl-10"
-                      placeholder="tu@email.com"
-                    />
-                  </div>
-                </motion.div>
-
-                {/* Phone */}
-                <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Telefono <span className="text-gray-400 font-normal">(opcional)</span>
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="input-premium pl-10"
-                      placeholder="+34 123 456 789"
-                    />
-                  </div>
-                </motion.div>
-
-                {/* Password */}
-                <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Contrasena
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type={showPassword1 ? 'text' : 'password'}
-                      name="password1"
-                      value={formData.password1}
-                      onChange={handleChange}
-                      required
-                      minLength={8}
-                      className="input-premium pl-10 pr-11"
-                      placeholder="--------"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword1(!showPassword1)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword1 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {/* Password strength indicator */}
-                  {formData.password1.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${passwordStrength.color}`}
-                          style={{ width: `${(passwordStrength.level / 3) * 100}%` }}
-                        />
-                      </div>
-                      <span className={`text-xs font-medium ${
-                        passwordStrength.level === 1 ? 'text-red-500' :
-                        passwordStrength.level === 2 ? 'text-yellow-600' :
-                        'text-green-600'
-                      }`}>
-                        {passwordStrength.label}
-                      </span>
-                    </div>
-                  )}
-                </motion.div>
-
-                {/* Confirm Password */}
-                <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Confirmar contrasena
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type={showPassword2 ? 'text' : 'password'}
-                      name="password2"
-                      value={formData.password2}
-                      onChange={handleChange}
-                      required
-                      minLength={8}
-                      className="input-premium pl-10 pr-11"
-                      placeholder="--------"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword2(!showPassword2)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      {showPassword2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </motion.div>
-
-                {/* Submit */}
-                <motion.div variants={itemVariants}>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full gradient-primary rounded-xl py-3 font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                        </svg>
-                        Registrando...
-                      </span>
-                    ) : (
-                      'Crear cuenta'
-                    )}
-                  </Button>
-                </motion.div>
-
-                {/* Footer */}
-                <motion.div variants={itemVariants} className="text-center pt-2">
-                  <p className="text-sm text-gray-500">
-                    Ya tienes una cuenta?{' '}
-                    <Link
-                      href="/es/login"
-                      className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                    >
-                      Inicia sesion
-                    </Link>
-                  </p>
-                </motion.div>
-              </motion.div>
-            </form>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 mb-2">Crear tu cuenta</h1>
+            <p className="text-[14px] text-gray-500">Un ID de NeoCore es todo lo que necesitas.</p>
           </div>
-        </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative group">
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  required
+                  placeholder=" "
+                  className="peer w-full px-3.5 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                />
+                <label className="absolute left-3.5 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                  Nombre
+                </label>
+              </div>
+              <div className="relative group">
+                <input
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  required
+                  placeholder=" "
+                  className="peer w-full px-3.5 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+                />
+                <label className="absolute left-3.5 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                  Apellidos
+                </label>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder=" "
+                className="peer w-full px-4 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              />
+              <label className="absolute left-4 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                Correo electrónico
+              </label>
+            </div>
+
+            <div className="relative group">
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder=" "
+                className="peer w-full px-4 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+              />
+              <label className="absolute left-4 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                Teléfono <span className="text-gray-300 font-normal">(opcional)</span>
+              </label>
+            </div>
+
+            <div className="relative group">
+              <input
+                type={showPassword1 ? 'text' : 'password'}
+                name="password1"
+                value={formData.password1}
+                onChange={handleChange}
+                required
+                minLength={8}
+                placeholder=" "
+                className="peer w-full px-4 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 pr-12"
+              />
+              <label className="absolute left-4 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                Contraseña
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword1(!showPassword1)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                {showPassword1 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {formData.password1.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <div className="flex-1 h-[3px] bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                    style={{ width: `${(passwordStrength.level / 3) * 100}%` }}
+                  />
+                </div>
+                <span className={`text-[11px] font-medium ${
+                  passwordStrength.level === 1 ? 'text-red-500' :
+                  passwordStrength.level === 2 ? 'text-yellow-600' :
+                  'text-green-600'
+                }`}>
+                  {passwordStrength.label}
+                </span>
+              </div>
+            )}
+
+            <div className="relative group">
+              <input
+                type={showPassword2 ? 'text' : 'password'}
+                name="password2"
+                value={formData.password2}
+                onChange={handleChange}
+                required
+                minLength={8}
+                placeholder=" "
+                className="peer w-full px-4 pt-6 pb-2 text-[15px] bg-gray-50/50 border border-gray-200/80 rounded-xl text-gray-900 leading-tight transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 pr-12"
+              />
+              <label className="absolute left-4 top-4 text-[13px] text-gray-400 transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:top-3.5 peer-focus:top-1.5 peer-focus:text-[11px] peer-focus:text-blue-500 font-medium pointer-events-none">
+                Confirmar contraseña
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword2(!showPassword2)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                {showPassword2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#0071e3] hover:bg-[#0077ED] text-white rounded-xl py-6 text-[15px] font-medium transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 mt-6"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                  Creando...
+                </span>
+              ) : (
+                'Crear cuenta'
+              )}
+            </Button>
+
+            <div className="mt-8 text-center pt-6 border-t border-gray-100">
+              <p className="text-[13px] text-gray-500">
+                ¿Ya tienes una cuenta?{' '}
+                <Link href="/es/login" className="text-[#0071e3] hover:underline font-medium ml-1">
+                  Inicia sesión aquí.
+                </Link>
+              </p>
+            </div>
+          </form>
+        </motion.div>
       </div>
     </div>
   );

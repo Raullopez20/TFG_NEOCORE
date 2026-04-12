@@ -13,18 +13,11 @@ import {
   Loader2,
   Menu,
   X,
+  ChevronRight
 } from 'lucide-react';
 import { authAPI, User } from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
 
-/**
- * Layout del backoffice (panel de administracion).
- *
- * - Sidebar oscuro fijo a la izquierda con navegacion principal.
- * - Header superior con breadcrumb sencillo y datos del admin.
- * - AdminGuard: redirige al login si el usuario no tiene rol ADMIN.
- * - Responsive: en moviles el sidebar se convierte en menu lateral
- *   abrible mediante un boton hamburguesa.
- */
 export default function BackofficeLayout({
   children,
 }: {
@@ -36,17 +29,13 @@ export default function BackofficeLayout({
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Locale dinamico de la URL: /es/backoffice/... o /en/backoffice/...
   const locale = pathname.split('/')[1] || 'es';
 
   useEffect(() => {
     let mounted = true;
 
     const verifyAdmin = async () => {
-      const token =
-        typeof window !== 'undefined'
-          ? localStorage.getItem('access_token')
-          : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
       if (!token) {
         router.replace(`/${locale}/login`);
         return;
@@ -55,7 +44,6 @@ export default function BackofficeLayout({
         const me = await authAPI.me();
         if (!mounted) return;
         if (me.role !== 'ADMIN') {
-          // Cualquier usuario no admin va al dashboard general
           router.replace(`/${locale}/dashboard`);
           return;
         }
@@ -68,9 +56,7 @@ export default function BackofficeLayout({
     };
 
     verifyAdmin();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [locale, router]);
 
   const handleLogout = async () => {
@@ -84,88 +70,65 @@ export default function BackofficeLayout({
   };
 
   const navigation = [
-    {
-      name: 'Dashboard',
-      href: `/${locale}/backoffice/dashboard`,
-      icon: LayoutDashboard,
-    },
-    {
-      name: 'Usuarios',
-      href: `/${locale}/backoffice/users`,
-      icon: Users,
-    },
-    {
-      name: 'Reservas',
-      href: `/${locale}/backoffice/bookings`,
-      icon: CalendarDays,
-    },
-    {
-      name: 'Servicios',
-      href: `/${locale}/backoffice/services`,
-      icon: Sparkles,
-    },
+    { name: 'Dashboard', href: `/${locale}/backoffice/dashboard`, icon: LayoutDashboard },
+    { name: 'Usuarios', href: `/${locale}/backoffice/users`, icon: Users },
+    { name: 'Reservas', href: `/${locale}/backoffice/bookings`, icon: CalendarDays },
+    { name: 'Servicios', href: `/${locale}/backoffice/services`, icon: Sparkles },
   ];
 
   const isActive = (href: string) => pathname.startsWith(href);
-
-  // Migas de pan: ultimo segmento de la URL como titulo de seccion
-  const currentSection =
-    navigation.find((n) => isActive(n.href))?.name || 'Backoffice';
+  const currentSection = navigation.find((n) => isActive(n.href))?.name || 'Visión general';
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f1622] flex items-center justify-center">
-        <div className="text-center text-slate-200">
-          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-3 text-blue-400" />
-          <p className="text-sm tracking-wide">Verificando permisos...</p>
-        </div>
+      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex">
-      {/* Overlay movil */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="min-h-screen bg-[#f5f5f7] flex">
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Sidebar oscuro */}
+      {/* Sidebar Apple Style */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#1e2a3a] text-slate-100 flex flex-col transform transition-transform duration-200 ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white/70 backdrop-blur-3xl border-r border-gray-200/50 flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        } lg:translate-x-0 shadow-2xl lg:shadow-none`}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-700/60">
-          <Link
-            href={`/${locale}/backoffice/dashboard`}
-            className="flex items-center gap-2"
-          >
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center shadow-md">
-              <ShieldCheck className="w-5 h-5 text-white" />
+        {/* Logo Area */}
+        <div className="pt-8 pb-6 px-6">
+          <Link href={`/${locale}/backoffice/dashboard`} className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center shadow-md">
+              <ShieldCheck className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-sm font-semibold leading-tight">NeoCore</p>
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">
-                Backoffice
-              </p>
+              <p className="text-[15px] font-semibold tracking-tight text-gray-900 leading-none">NeoCore</p>
+              <p className="text-[11px] font-medium text-gray-500 mt-1">Centro de Administración</p>
             </div>
           </Link>
           <button
-            className="lg:hidden p-1 rounded hover:bg-slate-700/50"
+            className="absolute top-6 right-4 lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-full"
             onClick={() => setSidebarOpen(false)}
-            aria-label="Cerrar menu"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Navegacion principal */}
-        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
           {navigation.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -174,75 +137,83 @@ export default function BackofficeLayout({
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
                   active
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-300 hover:bg-slate-700/60 hover:text-white'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100/80 hover:text-gray-900'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                {item.name}
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-[18px] h-[18px] ${active ? 'text-white' : 'text-gray-400'}`} />
+                  {item.name}
+                </div>
+                {active && <ChevronRight className="w-4 h-4 opacity-70" />}
               </Link>
             );
           })}
         </nav>
 
-        {/* Perfil + logout */}
-        <div className="border-t border-slate-700/60 p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-200 font-semibold">
+        {/* User Profile */}
+        <div className="p-4 mt-auto border-t border-gray-200/50">
+          <div className="flex items-center gap-3 px-2 mb-4">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300/50 flex items-center justify-center text-gray-600 font-semibold shadow-sm">
               {user?.first_name?.[0] || 'A'}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user?.full_name || user?.email}
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-gray-900 truncate">
+                {user?.full_name || 'Administrador'}
               </p>
-              <p className="text-[11px] text-slate-400 truncate">
+              <p className="text-[11px] text-gray-400 truncate mt-0.5">
                 {user?.email}
               </p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-slate-700/60 hover:bg-slate-700 text-slate-100 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </div>
       </aside>
 
-      {/* Area principal */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        
         {/* Topbar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+        <header className="h-[60px] bg-white/70 backdrop-blur-xl border-b border-gray-200/50 flex items-center justify-between px-4 lg:px-8 z-30 sticky top-0">
           <div className="flex items-center gap-3">
             <button
-              className="lg:hidden p-2 rounded hover:bg-slate-100"
+              className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100"
               onClick={() => setSidebarOpen(true)}
-              aria-label="Abrir menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-slate-400">
-                Backoffice
-              </p>
-              <h1 className="text-base font-semibold text-slate-800 leading-tight">
-                {currentSection}
-              </h1>
-            </div>
+            <h1 className="text-[17px] font-semibold text-gray-900 tracking-tight">
+              {currentSection}
+            </h1>
           </div>
-          <div className="hidden sm:flex items-center gap-3 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Sistema operativo
-            </span>
+          <div className="flex items-center">
+             {/* Optional top-right tools */}
+             <div className="hidden sm:flex items-center gap-2 text-[12px] font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200/60">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Sistema En Línea
+             </div>
           </div>
         </header>
 
-        {/* Contenido */}
-        <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">{children}</main>
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="max-w-7xl mx-auto"
+          >
+            {children}
+          </motion.div>
+        </main>
       </div>
     </div>
   );

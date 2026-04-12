@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { QueryProvider } from '@/components/providers/query-provider';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from 'sonner';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import '../globals.css';
@@ -35,7 +35,7 @@ export default async function LocaleLayout({
               <main className="flex-1">{children}</main>
               <Footer />
             </div>
-            <Toaster />
+            <Toaster position="top-center" richColors theme="light" closeButton />
           </QueryProvider>
         </NextIntlClientProvider>
       </body>
