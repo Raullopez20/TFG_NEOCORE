@@ -126,12 +126,15 @@ class CustomRegisterSerializer(RegisterSerializer):
     
     first_name = serializers.CharField(required=True, max_length=150)
     last_name = serializers.CharField(required=True, max_length=150)
-    phone = serializers.CharField(required=False, max_length=20)
+    phone = serializers.CharField(required=False, max_length=20, allow_blank=True)
     gdpr_consent = serializers.BooleanField(required=True)
 
     def validate_email(self, value):
         EmailValidator()(value)
-        return value.lower().strip()
+        value = value.lower().strip()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError('Ya existe una cuenta registrada con este email.')
+        return value
 
     def validate_first_name(self, value):
         value = value.strip()
