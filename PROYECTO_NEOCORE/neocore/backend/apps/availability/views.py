@@ -86,8 +86,11 @@ class AvailabilityRuleViewSet(viewsets.ModelViewSet):
         se asigna automáticamente como profesional propietario.
         Los admins pueden especificar cualquier profesional.
         """
+        from rest_framework.exceptions import PermissionDenied
         user = self.request.user
         if not (hasattr(user, 'is_admin_role') and (user.is_admin_role or user.is_staff)):
+            if not getattr(user, 'is_professional', False):
+                raise PermissionDenied("Only professionals can create availability rules.")
             serializer.save(professional=self.request.user)
         else:
             serializer.save()
@@ -140,8 +143,11 @@ class TimeOffViewSet(viewsets.ModelViewSet):
         se asigna automáticamente como profesional propietario.
         Los admins pueden especificar cualquier profesional.
         """
+        from rest_framework.exceptions import PermissionDenied
         user = self.request.user
         if not (hasattr(user, 'is_admin_role') and (user.is_admin_role or user.is_staff)):
+            if not getattr(user, 'is_professional', False):
+                raise PermissionDenied("Only professionals can create time off entries.")
             serializer.save(professional=self.request.user)
         else:
             serializer.save()

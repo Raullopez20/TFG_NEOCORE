@@ -5,12 +5,14 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import ContactMessageSerializer
+from .models import NotificationLog
+from .serializers import ContactMessageSerializer, NotificationLogSerializer
 
 security_logger = logging.getLogger('security')
 
@@ -65,3 +67,34 @@ class ContactMessageView(APIView):
         )
 
         return Response({'detail': 'Mensaje enviado correctamente.'}, status=status.HTTP_201_CREATED)
+
+
+class NotificationLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet de solo lectura para el historial de notificaciones.
+
+    Permite a los usuarios ver sus propias notificaciones y a los
+    administradores ver todas las notificaciones del sistema.
+
+    Filtros disponibles (via query params):
+        - status: Filtrar por estado (PENDING, SENT, FAILED).
+        - notification_type: Filtrar por tipo (BOOKING_CREATED, etc.).
+        - booking: Filtrar por ID de reserva.
+    """
+
+    serializer_class = NotificationLogSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status', 'notification_type', 'booking']
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return NotificationLog.objects.none()
+
+        user = self.request.user
+        qs = NotificationLog.objects.select_related('recipient', 'booking')
+
+        if user.is_staff or getattr(user, 'is_admin_role', False):
+            return qs.all()
+
+        return qs.filter(recipient=user)

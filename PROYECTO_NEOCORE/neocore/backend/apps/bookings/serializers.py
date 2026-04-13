@@ -110,34 +110,45 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         Validaciones de negocio para la creación de una reserva.
 
         Verifica coherencia temporal, que no sea en el pasado,
-        y que el slot esté disponible en el calendario del profesional.
+        que la duración coincida con la del servicio, y que el slot
+        esté disponible en el calendario del profesional.
         """
         start_datetime = attrs.get('start_datetime')
         end_datetime = attrs.get('end_datetime')
         professional = attrs.get('professional')
-        
+        service = attrs.get('service')
+
         # La hora de fin debe ser posterior a la de inicio
         if start_datetime >= end_datetime:
             raise serializers.ValidationError(
                 "End time must be after start time"
             )
-        
+
         # No se permiten reservas en el pasado
         if start_datetime < timezone.now():
             raise serializers.ValidationError(
                 "Cannot book appointments in the past"
             )
-        
+
+        # La duración de la reserva debe coincidir con la del servicio
+        if service:
+            booking_duration = int((end_datetime - start_datetime).total_seconds() / 60)
+            if booking_duration != service.duration_minutes:
+                raise serializers.ValidationError(
+                    f'La duración de la reserva ({booking_duration} min) no coincide '
+                    f'con la duración del servicio ({service.duration_minutes} min).'
+                )
+
         # Verificar que el slot esté disponible consultando el servicio de disponibilidad
         is_valid, error_msg = AvailabilityService.validate_slot_available(
             professional_id=professional.id,
             start_datetime=start_datetime,
             end_datetime=end_datetime
         )
-        
+
         if not is_valid:
             raise serializers.ValidationError(error_msg)
-        
+
         return attrs
     
     def create(self, validated_data):

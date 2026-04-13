@@ -30,6 +30,7 @@ Control de acceso:
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -188,29 +189,30 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         Transici\u00f3n de estado: PENDING -> CONFIRMED.
         """
-        booking = self.get_object()
-        
         if not request.user.is_professional:
             return Response(
                 {'error': 'Only professionals can confirm bookings'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
+        booking = self.get_object()
+
         if booking.professional != request.user:
             return Response(
                 {'error': 'You can only confirm your own bookings'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
-        if not booking.can_be_confirmed():
-            return Response(
-                {'error': f'Booking cannot be confirmed (current status: {booking.status})'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        booking.status = Booking.Status.CONFIRMED
-        booking.save()
-        
+
+        with transaction.atomic():
+            booking.refresh_from_db()
+            if not booking.can_be_confirmed():
+                return Response(
+                    {'error': f'Booking cannot be confirmed (current status: {booking.status})'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            booking.status = Booking.Status.CONFIRMED
+            booking.save()
+
         return Response(BookingSerializer(booking).data)
     
     @action(detail=True, methods=['post'])
@@ -226,33 +228,33 @@ class BookingViewSet(viewsets.ModelViewSet):
         Registra el motivo del rechazo, qui\u00e9n lo realiz\u00f3 y la fecha.
         Transici\u00f3n de estado: PENDING -> REJECTED.
         """
-        booking = self.get_object()
-        
         if not request.user.is_professional:
             return Response(
                 {'error': 'Only professionals can reject bookings'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
+        booking = self.get_object()
+
         if booking.professional != request.user:
             return Response(
                 {'error': 'You can only reject your own bookings'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
-        if not booking.can_be_rejected():
-            return Response(
-                {'error': f'Booking cannot be rejected (current status: {booking.status})'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Actualizar estado y registrar datos de rechazo
-        booking.status = Booking.Status.REJECTED
-        booking.cancellation_reason = clean(request.data.get('reason', ''), tags=[], attributes={}, strip=True)
-        booking.canceled_by = request.user
-        booking.canceled_at = timezone.now()
-        booking.save()
-        
+
+        with transaction.atomic():
+            booking.refresh_from_db()
+            if not booking.can_be_rejected():
+                return Response(
+                    {'error': f'Booking cannot be rejected (current status: {booking.status})'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            booking.status = Booking.Status.REJECTED
+            booking.cancellation_reason = clean(request.data.get('reason', ''), tags=[], attributes={}, strip=True)
+            booking.canceled_by = request.user
+            booking.canceled_at = timezone.now()
+            booking.save()
+
         return Response(BookingSerializer(booking).data)
     
     @action(detail=True, methods=['post'])
@@ -267,7 +269,7 @@ class BookingViewSet(viewsets.ModelViewSet):
         Transici\u00f3n de estado: PENDING|CONFIRMED -> CANCELED.
         """
         booking = self.get_object()
-        
+
         # Verificar que el usuario sea parte de la reserva o sea admin
         if booking.client != request.user and booking.professional != request.user:
             if not (request.user.is_admin_role or request.user.is_staff):
@@ -275,20 +277,20 @@ class BookingViewSet(viewsets.ModelViewSet):
                     {'error': 'You can only cancel your own bookings'},
                     status=status.HTTP_403_FORBIDDEN
                 )
-        
-        if not booking.can_be_canceled():
-            return Response(
-                {'error': f'Booking cannot be canceled (current status: {booking.status})'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Actualizar estado y registrar datos de cancelaci\u00f3n
-        booking.status = Booking.Status.CANCELED
-        booking.cancellation_reason = clean(request.data.get('reason', ''), tags=[], attributes={}, strip=True)
-        booking.canceled_by = request.user
-        booking.canceled_at = timezone.now()
-        booking.save()
-        
+
+        with transaction.atomic():
+            booking.refresh_from_db()
+            if not booking.can_be_canceled():
+                return Response(
+                    {'error': f'Booking cannot be canceled (current status: {booking.status})'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            booking.status = Booking.Status.CANCELED
+            booking.cancellation_reason = clean(request.data.get('reason', ''), tags=[], attributes={}, strip=True)
+            booking.canceled_by = request.user
+            booking.canceled_at = timezone.now()
+            booking.save()
+
         return Response(BookingSerializer(booking).data)
     
     @action(detail=True, methods=['post'])
@@ -300,29 +302,30 @@ class BookingViewSet(viewsets.ModelViewSet):
         Verifica que el usuario sea el profesional asignado a la reserva.
         Transici\u00f3n de estado: CONFIRMED -> DONE.
         """
-        booking = self.get_object()
-        
         if not request.user.is_professional:
             return Response(
                 {'error': 'Only professionals can mark bookings as done'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
+        booking = self.get_object()
+
         if booking.professional != request.user:
             return Response(
                 {'error': 'You can only mark your own bookings as done'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
-        if booking.status != Booking.Status.CONFIRMED:
-            return Response(
-                {'error': 'Only confirmed bookings can be marked as done'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        booking.status = Booking.Status.DONE
-        booking.save()
-        
+
+        with transaction.atomic():
+            booking.refresh_from_db()
+            if booking.status != Booking.Status.CONFIRMED:
+                return Response(
+                    {'error': 'Only confirmed bookings can be marked as done'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            booking.status = Booking.Status.DONE
+            booking.save()
+
         return Response(BookingSerializer(booking).data)
     
     # =========================================================================
