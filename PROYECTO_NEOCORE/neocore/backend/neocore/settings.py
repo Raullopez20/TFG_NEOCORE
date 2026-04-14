@@ -203,9 +203,9 @@ WSGI_APPLICATION = 'neocore.wsgi.application'
 DATABASE_URL = env('DATABASE_URL', default='')
 
 if DATABASE_URL:
-    DATABASES = {
-        'default': env.db('DATABASE_URL')
-    }
+    _db_config = env.db('DATABASE_URL')
+    _db_config.setdefault('CONN_MAX_AGE', 60)   # reuse DB connections for 60 s
+    DATABASES = {'default': _db_config}
 else:
     DATABASES = {
         'default': {
@@ -215,6 +215,7 @@ else:
             'PASSWORD': env('POSTGRES_PASSWORD'),
             'HOST': env('POSTGRES_HOST'),
             'PORT': env('POSTGRES_PORT'),
+            'CONN_MAX_AGE': 60,   # reuse DB connections for 60 s (connection pooling)
         }
     }
 
@@ -352,9 +353,10 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'     # Usuarios autenticados
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',       # Máximo 100 peticiones/hora para anónimos
-        'user': '100/hour',       # Máximo 100 peticiones/hora para autenticados
-        'booking': '10/hour',     # Máximo 10 reservas/hora por usuario
+        'anon': '60/hour',        # Máximo 60 peticiones/hora para anónimos
+        'user': '500/hour',       # Máximo 500 peticiones/hora para autenticados
+        'booking': '20/hour',     # Máximo 20 reservas/hora por usuario
+        'contact': '5/hour',      # Máximo 5 mensajes de contacto por hora
     }
 }
 
@@ -514,6 +516,9 @@ SESSION_COOKIE_AGE = 3600
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
+# Exempt the internal Docker health check from HTTPS redirect so gunicorn's
+# direct HTTP listener (:8000) can answer the health probe correctly.
+SECURE_REDIRECT_EXEMPT = [r'^api/health/$']
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -561,9 +566,15 @@ CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': env('REDIS_URL', default='redis://redis:6379/0'),
+        'TIMEOUT': 300,  # 5-minute default TTL
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 50,
+            },
+            'IGNORE_EXCEPTIONS': True,   # degrade gracefully if Redis is down
+        },
+        'KEY_PREFIX': 'neocore',
     }
 }
 
