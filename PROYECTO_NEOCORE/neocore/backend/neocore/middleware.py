@@ -29,11 +29,15 @@ class SecurityAnalysisMiddleware(MiddlewareMixin):
         re.compile(r"^/wp-admin", re.IGNORECASE),
     ]
 
+    # Only flag unambiguously malicious patterns in headers.
+    # Avoid single SQL words (select/update/delete) — they appear in normal text
+    # and generate too many false positives on legitimate requests.
     SUSPICIOUS_HEADER_PATTERNS = [
         re.compile(r"<script", re.IGNORECASE),
         re.compile(r"javascript:", re.IGNORECASE),
         re.compile(r"union\s+select", re.IGNORECASE),
-        re.compile(r"\b(select|insert|update|delete|drop)\b", re.IGNORECASE),
+        re.compile(r";\s*(drop|truncate)\s+table", re.IGNORECASE),
+        re.compile(r"xp_cmdshell", re.IGNORECASE),
     ]
 
     def _get_client_ip(self, request):
@@ -102,7 +106,7 @@ class SecurityAnalysisMiddleware(MiddlewareMixin):
         if ip and request.path.startswith('/api/'):
             api_key = f'security:api_hour:{ip}'
             api_req = cache.get(api_key, 0)
-            if api_req >= 100:
+            if api_req >= 1000:
                 self._log_event(
                     'warning',
                     'request.blocked.api_rate_limit',
@@ -111,7 +115,7 @@ class SecurityAnalysisMiddleware(MiddlewareMixin):
                     method=request.method,
                     api_requests_last_hour=api_req,
                 )
-                return self._security_response('Has superado el limite de 100 peticiones por hora para la API.', 429)
+                return self._security_response('Has superado el limite de peticiones por hora para la API.', 429)
             cache.set(api_key, api_req + 1, timeout=3600)
 
         for ua_pattern in self.MALICIOUS_UA_PATTERNS:
@@ -149,18 +153,12 @@ class SecurityAnalysisMiddleware(MiddlewareMixin):
                 )
                 return self._security_response('Cabeceras sospechosas detectadas.', 400)
 
-        if request.body:
-            body_preview = request.body[:4096].decode('utf-8', errors='ignore')
-            for pattern in self.SUSPICIOUS_HEADER_PATTERNS:
-                if pattern.search(body_preview):
-                    self._log_event(
-                        'warning',
-                        'request.suspicious_body',
-                        ip=ip,
-                        path=request.path,
-                        method=request.method,
-                    )
-                    return self._security_response('Contenido sospechoso detectado en la peticion.', 400)
+        # NOTE: We intentionally do NOT scan the JSON request body here.
+        # API payloads (notes, bios, descriptions) routinely contain words like
+        # "select", "update", "delete" in normal sentences, which would cause
+        # constant 400 false-positives for legitimate users.
+        # SQL injection in the body is prevented at the ORM / parameterised
+        # query level, which is the correct layer for that protection.
 
         if hasattr(request, 'user') and getattr(request.user, 'is_authenticated', False):
             activity_key = f'security:last_activity_update:{request.user.pk}'
@@ -172,10 +170,27 @@ class SecurityAnalysisMiddleware(MiddlewareMixin):
 
 
 class SQLInjectionProtectionMiddleware(MiddlewareMixin):
-    """Bloquea patrones tipicos de SQL injection en query params y body."""
+    """Bloquea patrones inequivocamente maliciosos en query params.
 
+    Solo analiza la query string (no el body): los endpoints de la API
+    reciben JSON cuyo contenido es sanitizado por los serializers y
+    protegido por el ORM de Django (queries parametrizadas).
+    Usar este middleware en el body produce demasiados falsos positivos
+    con texto normal que contiene palabras como 'select' o 'update'.
+    """
+
+    # Patterns that are unambiguously SQL injection attempts in a URL:
+    # - UNION SELECT (classic exfil)
+    # - '; DROP / TRUNCATE TABLE
+    # - stacked queries via semicolons followed by a DML keyword
+    # - xp_cmdshell (MSSQL RCE)
+    # - OR/AND 1=1 tautology
     SQLI_PATTERN = re.compile(
-        r"\b(select|insert|update|delete|drop|union|xp_|0x)\b|--|;",
+        r"union\s+select"
+        r"|;\s*(drop|truncate|insert|update|delete)\s+\w"
+        r"|xp_cmdshell"
+        r"|\bor\b\s+['\"]?\d+['\"]?\s*=\s*['\"]?\d"
+        r"|\band\b\s+['\"]?\d+['\"]?\s*=\s*['\"]?\d",
         re.IGNORECASE,
     )
 
@@ -199,24 +214,6 @@ class SQLInjectionProtectionMiddleware(MiddlewareMixin):
                         'path': request.path,
                         'method': request.method,
                         'query_string': query_string,
-                    }
-                },
-            )
-            return JsonResponse({'detail': 'Patron de inyeccion SQL detectado.'}, status=400)
-
-        if not request.body:
-            return None
-
-        body_text = request.body[:4096].decode('utf-8', errors='ignore')
-        if self.SQLI_PATTERN.search(body_text):
-            security_logger.warning(
-                'request.blocked.sqli.body',
-                extra={
-                    'event': {
-                        'timestamp': datetime.now(timezone.utc).isoformat(),
-                        'ip': ip,
-                        'path': request.path,
-                        'method': request.method,
                     }
                 },
             )

@@ -84,6 +84,9 @@ def _build_allowed_hosts() -> list[str]:
     inferred = [
         env('BACKEND_PUBLIC_URL', default=''),
         env('NEXT_PUBLIC_DOMAIN', default=''),
+        # Railway injects RAILWAY_PUBLIC_DOMAIN for the service's public URL
+        env('RAILWAY_PUBLIC_DOMAIN', default=''),
+        env('RAILWAY_STATIC_URL', default=''),
     ]
 
     hosts: list[str] = []
@@ -91,6 +94,12 @@ def _build_allowed_hosts() -> list[str]:
         host = _extract_host(item)
         if host and host not in hosts:
             hosts.append(host)
+
+    # Also allow Railway's internal *.up.railway.app pattern for health checks
+    railway_env = env('RAILWAY_ENVIRONMENT', default='')
+    if railway_env and '*.up.railway.app' not in hosts:
+        hosts.append('.railway.app')   # Django treats leading dot as wildcard
+
     return hosts
 
 
@@ -206,18 +215,26 @@ if DATABASE_URL:
     _db_config = env.db('DATABASE_URL')
     _db_config.setdefault('CONN_MAX_AGE', 60)   # reuse DB connections for 60 s
     DATABASES = {'default': _db_config}
-else:
+elif env('POSTGRES_DB', default='') and env('POSTGRES_USER', default=''):
+    # Individual POSTGRES_* vars (docker-compose / local VPS)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': env('POSTGRES_DB'),
             'USER': env('POSTGRES_USER'),
             'PASSWORD': env('POSTGRES_PASSWORD'),
-            'HOST': env('POSTGRES_HOST'),
-            'PORT': env('POSTGRES_PORT'),
-            'CONN_MAX_AGE': 60,   # reuse DB connections for 60 s (connection pooling)
+            'HOST': env('POSTGRES_HOST', default='db'),
+            'PORT': env('POSTGRES_PORT', default='5432'),
+            'CONN_MAX_AGE': 60,
         }
     }
+else:
+    # No database configured — crash with a clear message
+    raise RuntimeError(
+        'No database configured. '
+        'Set DATABASE_URL (recommended for Railway/cloud) '
+        'or POSTGRES_DB + POSTGRES_USER + POSTGRES_PASSWORD + POSTGRES_HOST.'
+    )
 
 # ============================================================================
 # VALIDACIÓN DE CONTRASEÑAS

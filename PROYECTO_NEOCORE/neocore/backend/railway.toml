@@ -1,0 +1,12 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Railway will probe this path; our health_check view returns 200 immediately
+healthcheckPath = "/api/health/"
+healthcheckTimeout = 30
+
+# Restart the service automatically if it crashes
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
