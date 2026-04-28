@@ -4,10 +4,9 @@ from datetime import datetime, timezone
 from dj_rest_auth.registration.views import RegisterView
 from dj_rest_auth.views import LoginView, LogoutView
 from django.contrib.auth import logout
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django_ratelimit.decorators import ratelimit
-from rest_framework import status
-from rest_framework.response import Response
 
 security_logger = logging.getLogger('security')
 
@@ -20,10 +19,10 @@ def _get_client_ip(request):
 
 
 def _blocked_response(message):
-    return Response({'detail': message}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    return JsonResponse({'detail': message}, status=429)
 
 
-@method_decorator(ratelimit(key='ip', rate='5/15m', method='POST', block=False), name='dispatch')
+@method_decorator(ratelimit(key='ip', rate='20/15m', method='POST', block=False), name='dispatch')
 class SecureLoginView(LoginView):
     """Login con rate limit por IP y logging de bloqueos."""
 
@@ -44,7 +43,7 @@ class SecureLoginView(LoginView):
         return super().dispatch(request, *args, **kwargs)
 
 
-@method_decorator(ratelimit(key='ip', rate='3/h', method='POST', block=False), name='dispatch')
+@method_decorator(ratelimit(key='ip', rate='10/h', method='POST', block=False), name='dispatch')
 class SecureRegisterView(RegisterView):
     """Registro con rate limit por IP."""
 

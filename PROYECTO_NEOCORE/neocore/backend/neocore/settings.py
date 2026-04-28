@@ -395,14 +395,22 @@ SIMPLE_JWT = {
 # ============================================================================
 # Configuración de dj-rest-auth, que proporciona endpoints listos para
 # registro, login, logout, cambio de contraseña, etc.
+_frontend_base = env('FRONTEND_URL', default=env('NEXT_PUBLIC_SITE_URL', default='https://neocoree.xyz'))
 REST_AUTH = {
-    'USE_JWT': True,                                # Usar JWT en lugar de tokens de sesión
-    'JWT_AUTH_COOKIE': None,                        # Desactivar cookies JWT; los tokens se envían en el body JSON
-    'JWT_AUTH_REFRESH_COOKIE': None,                # Desactivar cookies de refresco JWT
-    'SESSION_LOGIN': False,                         # Desactivar login por sesión (evita problemas con CSRF)
-    'USER_DETAILS_SERIALIZER': 'apps.users.serializers.UserSerializer',  # Serializador para los datos del usuario
-    'LOGIN_SERIALIZER': 'dj_rest_auth.serializers.LoginSerializer',      # Serializador para el login
-    'REGISTER_SERIALIZER': 'apps.users.serializers.CustomRegisterSerializer',  # Registro con first_name, last_name, phone y rol CLIENT
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': None,
+    'JWT_AUTH_REFRESH_COOKIE': None,
+    'JWT_AUTH_HTTPONLY': False,  # tokens enviados en body JSON, no en cookies
+    'SESSION_LOGIN': False,
+    'USER_DETAILS_SERIALIZER': 'apps.users.serializers.UserSerializer',
+    'LOGIN_SERIALIZER': 'dj_rest_auth.serializers.LoginSerializer',
+    'REGISTER_SERIALIZER': 'apps.users.serializers.CustomRegisterSerializer',
+    'PASSWORD_RESET_SERIALIZER': 'apps.users.serializers.FrontendPasswordResetSerializer',
+    'PASSWORD_RESET_USE_SITES_DOMAIN': False,
+    'OLD_PASSWORD_FIELD_ENABLED': True,
+    'LOGOUT_ON_PASSWORD_CHANGE': False,
+    # URL del frontend para el enlace de recuperación de contraseña en el email
+    'PASSWORD_RESET_CONFIRM_URL': f'{_frontend_base}/auth/password/reset/confirm/{{uid}}/{{token}}/',
 }
 
 # ============================================================================
@@ -412,9 +420,8 @@ REST_AUTH = {
 SITE_ID = 1
 
 # El campo principal de autenticación es el email (no el username)
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 # La verificación de email es opcional (el usuario puede usarlo sin verificar)
 ACCOUNT_EMAIL_VERIFICATION = 'optional'
 # No se permiten emails duplicados en el sistema
@@ -565,13 +572,25 @@ CONTACT_RECIPIENT_EMAIL = env('CONTACT_RECIPIENT_EMAIL', default=DEFAULT_FROM_EM
 # ============================================================================
 # Celery utiliza Redis como broker de mensajes y como backend de resultados.
 # Permite ejecutar tareas en segundo plano como el envío de emails y recordatorios.
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://redis:6379/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
-CELERY_ACCEPT_CONTENT = ['json']        # Solo acepta contenido JSON (seguridad)
-CELERY_TASK_SERIALIZER = 'json'         # Serialización de tareas en JSON
-CELERY_RESULT_SERIALIZER = 'json'       # Serialización de resultados en JSON
-CELERY_TIMEZONE = TIME_ZONE             # Misma zona horaria que Django
-# Usar el scheduler de base de datos para Celery Beat (tareas periódicas)
+_redis_url = env('REDIS_URL', default='')
+_celery_broker = env('CELERY_BROKER_URL', default=_redis_url or '')
+_celery_backend = env('CELERY_RESULT_BACKEND', default=_redis_url or '')
+
+if _celery_broker:
+    CELERY_BROKER_URL = _celery_broker
+    CELERY_RESULT_BACKEND = _celery_backend or _celery_broker
+    CELERY_TASK_ALWAYS_EAGER = False
+else:
+    # Sin Redis: ejecutar tareas en-proceso (modo eager) para no bloquear la app
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = False
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # ============================================================================
@@ -611,11 +630,15 @@ BLEACH_ALLOWED_ATTRIBUTES = {}
 BLEACH_ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
 BLEACH_STRIP_COMMENTS = True
 
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'",)
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")
-CSP_IMG_SRC = ("'self'", 'data:', 'https://images.unsplash.com')
-CSP_FRAME_ANCESTORS = ("'none'",)
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'script-src': ("'self'",),
+        'style-src': ("'self'", "'unsafe-inline'"),
+        'img-src': ("'self'", 'data:', 'https://images.unsplash.com'),
+        'frame-ancestors': ("'none'",),
+    }
+}
 
 # Spectacular (API Documentation)
 SPECTACULAR_SETTINGS = {

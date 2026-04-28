@@ -20,6 +20,7 @@ from django.utils import timezone
 from bleach import clean
 import re
 from dj_rest_auth.registration.serializers import RegisterSerializer
+from dj_rest_auth.serializers import PasswordResetSerializer as _BasePasswordResetSerializer
 
 try:
     import magic
@@ -123,7 +124,8 @@ class CustomRegisterSerializer(RegisterSerializer):
     Al registrarse, todos los nuevos usuarios reciben automáticamente
     el rol de CLIENT.
     """
-    
+
+    username = serializers.CharField(required=False, allow_blank=True, default='')
     first_name = serializers.CharField(required=True, max_length=150)
     last_name = serializers.CharField(required=True, max_length=150)
     phone = serializers.CharField(required=False, max_length=20, allow_blank=True)
@@ -299,3 +301,19 @@ class AdminUserSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class FrontendPasswordResetSerializer(_BasePasswordResetSerializer):
+    """Genera el enlace de recuperación apuntando al frontend en lugar de al backend."""
+
+    def get_email_options(self):
+        from django.conf import settings as django_settings
+        from allauth.account.utils import user_pk_to_url_str
+
+        frontend_base = getattr(django_settings, 'FRONTEND_URL', 'https://neocoree.xyz')
+
+        def _frontend_url_generator(request, user, temp_key):
+            uid = user_pk_to_url_str(user)
+            return f"{frontend_base}/auth/password/reset/confirm/{uid}/{temp_key}/"
+
+        return {'url_generator': _frontend_url_generator}

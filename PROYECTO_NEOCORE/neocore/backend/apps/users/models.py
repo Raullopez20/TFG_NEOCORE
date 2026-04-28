@@ -13,10 +13,35 @@ Características principales:
     - Imagen de perfil opcional
 """
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager as DjangoUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
+
+
+class UserManager(DjangoUserManager):
+    """Custom manager so create_superuser works without a username argument."""
+
+    def _create_user(self, email, password, **extra_fields):
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.model.normalize_username(email)
+        extra_fields.pop('username', None)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_superuser', False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'ADMIN')
+        return self._create_user(email, password, **extra_fields)
 
 
 class User(AbstractUser):
@@ -87,6 +112,8 @@ class User(AbstractUser):
     gdpr_consent_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     
+    objects = UserManager()
+
     # Configuración de autenticación: se usa email en lugar de username
     USERNAME_FIELD = 'email'
     # Campos obligatorios al crear un superusuario por consola

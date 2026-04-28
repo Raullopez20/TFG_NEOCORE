@@ -56,44 +56,32 @@ def handle_booking_created_or_updated(sender, instance, created, **kwargs):
     Las notificaciones se encolan en Celery (.delay()) para procesarse
     en segundo plano sin afectar el tiempo de respuesta de la API.
     """
+    import logging
+    _log = logging.getLogger(__name__)
+
+    def _notify(notification_type, recipient):
+        try:
+            send_booking_notification.delay(
+                booking_id=instance.id,
+                notification_type=notification_type,
+                recipient=recipient,
+            )
+        except Exception as exc:
+            _log.warning('Celery task dispatch failed (booking %s): %s', instance.id, exc)
+
     if created:
         # Nueva reserva creada -> notificar al profesional
-        send_booking_notification.delay(
-            booking_id=instance.id,
-            notification_type='booking_created',
-            recipient='professional'
-        )
+        _notify('booking_created', 'professional')
     else:
         # Verificar si hubo un cambio de estado
         old_status = getattr(instance, '_old_status', None)
         if old_status and old_status != instance.status:
             if instance.status == Booking.Status.CONFIRMED:
-                # Reserva confirmada -> notificar al cliente
-                send_booking_notification.delay(
-                    booking_id=instance.id,
-                    notification_type='booking_confirmed',
-                    recipient='client'
-                )
+                _notify('booking_confirmed', 'client')
             elif instance.status == Booking.Status.REJECTED:
-                # Reserva rechazada -> notificar al cliente
-                send_booking_notification.delay(
-                    booking_id=instance.id,
-                    notification_type='booking_rejected',
-                    recipient='client'
-                )
+                _notify('booking_rejected', 'client')
             elif instance.status == Booking.Status.CANCELED:
-                # Reserva cancelada -> notificar a la otra parte
                 if instance.canceled_by == instance.client:
-                    # El cliente canceló -> notificar al profesional
-                    send_booking_notification.delay(
-                        booking_id=instance.id,
-                        notification_type='booking_canceled',
-                        recipient='professional'
-                    )
+                    _notify('booking_canceled', 'professional')
                 else:
-                    # El profesional canceló -> notificar al cliente
-                    send_booking_notification.delay(
-                        booking_id=instance.id,
-                        notification_type='booking_canceled',
-                        recipient='client'
-                    )
+                    _notify('booking_canceled', 'client')
