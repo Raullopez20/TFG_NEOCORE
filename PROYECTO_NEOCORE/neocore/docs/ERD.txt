@@ -1,0 +1,191 @@
+# Entity-Relationship Diagram (ERD) - NeoCore
+
+## Diagrama ASCII
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                           USER                               │
+├──────────────────────────────────────────────────────────────┤
+│ PK │ id: BigInteger                                          │
+│    │ email: String (unique)                                  │
+│    │ password: String (hashed)                               │
+│    │ first_name: String                                      │
+│    │ last_name: String                                       │
+│    │ phone: String                                           │
+│    │ role: Enum [CLIENT, PROFESSIONAL, ADMIN]                │
+│    │ specialty: String (nullable, for PROFESSIONAL)          │
+│    │ bio: Text (nullable, for PROFESSIONAL)                  │
+│    │ profile_image: ImageField (nullable)                    │
+│    │ is_active: Boolean                                      │
+│    │ created_at: DateTime                                    │
+│    │ updated_at: DateTime                                    │
+└──────────────────────────────────────────────────────────────┘
+            │                           │
+            │ 1                         │ 1
+            │                           │
+            │ *                         │ *
+            ▼                           ▼
+┌─────────────────────────┐   ┌──────────────────────────────┐
+│   AVAILABILITY_RULE     │   │        TIME_OFF              │
+├─────────────────────────┤   ├──────────────────────────────┤
+│ PK │ id: BigInteger     │   │ PK │ id: BigInteger          │
+│ FK │ professional_id    │   │ FK │ professional_id         │
+│    │ day_of_week: Int   │   │    │ start_date: Date        │
+│    │   (0=Mon, 6=Sun)   │   │    │ end_date: Date          │
+│    │ start_time: Time   │   │    │ reason: String          │
+│    │ end_time: Time     │   │    │ created_at: DateTime    │
+│    │ is_active: Boolean │   │    │ updated_at: DateTime    │
+│    │ created_at: DateTime│  └──────────────────────────────┘
+│    │ updated_at: DateTime│
+└─────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────┐
+│                          SERVICE                             │
+├──────────────────────────────────────────────────────────────┤
+│ PK │ id: BigInteger                                          │
+│    │ name: String                                            │
+│    │ description: Text                                       │
+│    │ duration_minutes: Integer                               │
+│    │ price: Decimal (nullable)                               │
+│    │ is_active: Boolean                                      │
+│    │ image: ImageField (nullable)                            │
+│    │ created_at: DateTime                                    │
+│    │ updated_at: DateTime                                    │
+└──────────────────────────────────────────────────────────────┘
+            │
+            │ M:N (through ServiceProfessionals)
+            │
+            ▼
+┌─────────────────────────────────────────────┐
+│       SERVICE_PROFESSIONALS (M2M)           │
+├─────────────────────────────────────────────┤
+│ FK │ service_id                             │
+│ FK │ user_id (professional)                 │
+└─────────────────────────────────────────────┘
+            │
+            │
+            ▼
+        USER (role=PROFESSIONAL)
+
+
+┌──────────────────────────────────────────────────────────────┐
+│                          BOOKING                             │
+├──────────────────────────────────────────────────────────────┤
+│ PK │ id: BigInteger                                          │
+│ FK │ client_id → USER (role=CLIENT)                          │
+│ FK │ professional_id → USER (role=PROFESSIONAL)              │
+│ FK │ service_id → SERVICE                                    │
+│    │ start_datetime: DateTime                                │
+│    │ end_datetime: DateTime                                  │
+│    │ status: Enum [PENDING, CONFIRMED, REJECTED,             │
+│    │               CANCELED, DONE]                           │
+│    │ client_notes: Text                                      │
+│    │ professional_notes: Text (nullable)                     │
+│    │ cancellation_reason: Text (nullable)                    │
+│ FK │ canceled_by_id → USER (nullable)                        │
+│    │ canceled_at: DateTime (nullable)                        │
+│    │ reminder_sent: Boolean                                  │
+│    │ reminder_sent_at: DateTime (nullable)                   │
+│    │ created_at: DateTime                                    │
+│    │ updated_at: DateTime                                    │
+└──────────────────────────────────────────────────────────────┘
+            │
+            │ 1
+            │
+            │ *
+            ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     NOTIFICATION_LOG                         │
+├──────────────────────────────────────────────────────────────┤
+│ PK │ id: BigInteger                                          │
+│ FK │ recipient_id → USER                                     │
+│ FK │ booking_id → BOOKING (nullable)                         │
+│    │ notification_type: Enum [BOOKING_CREATED,               │
+│    │   BOOKING_CONFIRMED, BOOKING_REJECTED,                  │
+│    │   BOOKING_CANCELED, BOOKING_REMINDER]                   │
+│    │ status: Enum [PENDING, SENT, FAILED]                    │
+│    │ subject: String                                         │
+│    │ message: Text                                           │
+│    │ sent_at: DateTime (nullable)                            │
+│    │ error_message: Text (nullable)                          │
+│    │ created_at: DateTime                                    │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## Relaciones Principales
+
+### USER (1) ←→ (*) BOOKING
+- Un usuario (cliente) puede tener múltiples reservas
+- Un usuario (profesional) puede atender múltiples reservas
+
+### SERVICE (1) ←→ (*) BOOKING
+- Un servicio puede tener múltiples reservas
+- Una reserva pertenece a un servicio
+
+### USER (PROFESSIONAL) (1) ←→ (*) AVAILABILITY_RULE
+- Un profesional puede tener múltiples reglas de disponibilidad
+- Una regla pertenece a un profesional
+
+### USER (PROFESSIONAL) (1) ←→ (*) TIME_OFF
+- Un profesional puede tener múltiples períodos de ausencia
+- Un período de ausencia pertenece a un profesional
+
+### SERVICE (*) ←→ (*) USER (PROFESSIONAL)
+- Relación muchos a muchos a través de tabla intermedia
+- Un servicio puede ser ofrecido por múltiples profesionales
+- Un profesional puede ofrecer múltiples servicios
+
+### BOOKING (1) ←→ (*) NOTIFICATION_LOG
+- Una reserva puede tener múltiples notificaciones
+- Una notificación puede estar asociada a una reserva
+
+## Índices
+
+### USER
+- email (unique)
+- role + is_active
+
+### BOOKING
+- (client_id, status)
+- (professional_id, status)
+- start_datetime
+- (status, start_datetime)
+
+### AVAILABILITY_RULE
+- (professional_id, day_of_week, start_time) (unique)
+
+### NOTIFICATION_LOG
+- (recipient_id, status)
+- booking_id
+- created_at
+
+## Restricciones
+
+### BOOKING
+- start_datetime < end_datetime
+- client.role = CLIENT
+- professional.role = PROFESSIONAL
+- No overlapping bookings para mismo profesional
+
+### AVAILABILITY_RULE
+- start_time < end_time
+- professional.role = PROFESSIONAL
+- No overlapping rules para mismo profesional/día
+
+### TIME_OFF
+- start_date <= end_date
+- professional.role = PROFESSIONAL
+
+## Estados de Transición (BOOKING)
+
+```
+    PENDING
+    │
+    ├─→ CONFIRMED (profesional acepta)
+    │   │
+    │   ├─→ DONE (tras la cita)
+    │   └─→ CANCELED (cliente/profesional cancela)
+    │
+    └─→ REJECTED (profesional rechaza)
+```

@@ -1,0 +1,100 @@
+# ============================================================
+# NeoCore — .gitignore raíz
+# ============================================================
+
+# ---- Variables de entorno (NUNCA commitear credenciales) ----
+.env
+.env.local
+.env.*.local
+*.env
+
+# ---- Python / Django ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+PROYECTO_NEOCORE/neocore/backend/staticfiles/
+PROYECTO_NEOCORE/neocore/backend/media/
+PROYECTO_NEOCORE/neocore/backend/security.log
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+.vercel
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+*.tsbuildinfo
+next-env.d.ts
+
+# ---- Virtual environments ----
+venv/
+env/
+.venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# ---- IDEs ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---- OS ----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V1
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---- Testing ----
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# ---- Misc ----
+*.bak
+*.tmp
+*.orig

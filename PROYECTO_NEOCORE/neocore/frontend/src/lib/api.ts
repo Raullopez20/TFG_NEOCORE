@@ -1,0 +1,508 @@
+import axios, { AxiosError } from 'axios';
+
+// In the Vercel monorepo, /api/* is served by the Django serverless function
+// on the same origin — no CORS. NEXT_PUBLIC_API_URL should NOT be set.
+// Only set it if you're running a separate backend (e.g. local dev with a
+// different port): NEXT_PUBLIC_API_URL=http://localhost:8000
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || '';
+
+export const api = axios.create({
+  baseURL: API_ORIGIN,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor to add auth token 
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor to handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          const response = await axios.post(`${API_ORIGIN}/api/auth/token/refresh/`, {
+            refresh: refreshToken,
+          });
+
+          const { access } = response.data;
+          localStorage.setItem('access_token', access);
+
+          originalRequest.headers.Authorization = `Bearer ${access}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// API Types
+export interface User {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  phone: string;
+  role: 'CLIENT' | 'PROFESSIONAL' | 'ADMIN';
+  specialty?: string;
+  bio?: string;
+  profile_image?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Service {
+  id: number;
+  name: string;
+  description: string;
+  duration_minutes: number;
+  price?: number;
+  image?: string;
+  available_professionals_count: number;
+  professionals_list?: Professional[];
+  is_active: boolean;
+}
+
+export interface Professional {
+  id: number;
+  full_name: string;
+  specialty: string;
+  bio: string;
+  profile_image?: string;
+  average_rating?: number | null;
+  reviews_count?: number;
+}
+
+export interface Review {
+  id: number;
+  booking: number;
+  rating: number;
+  comment: string;
+  is_visible: boolean;
+  client_name: string;
+  service_name: string;
+  professional_id: number;
+  professional_name: string;
+  created_at: string;
+}
+
+export interface Booking {
+  id: number;
+  client: number;
+  client_info?: User;
+  notes?: string;
+  professional: number;
+  professional_info?: User;
+  service: number;
+  service_info?: Service;
+  start_datetime: string;
+  end_datetime: string;
+  duration_minutes: number;
+  status: 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELED' | 'DONE';
+  client_notes: string;
+  professional_notes?: string;
+  cancellation_reason?: string;
+  is_past: boolean;
+  is_upcoming: boolean;
+  created_at: string;
+}
+
+export interface TimeSlot {
+  start_datetime: string;
+  end_datetime: string;
+  is_available: boolean;
+}
+
+export interface AvailabilityRule {
+  id: number;
+  professional: number;
+  professional_name: string;
+  day_of_week: number;
+  day_name: string;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+}
+
+export interface TimeOff {
+  id: number;
+  professional: number;
+  professional_name: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+}
+
+// Auth API
+export const authAPI = {
+  login: async (email: string, password: string) => {
+    const response = await api.post('/api/auth/login/', { email, password });
+    return response.data;
+  },
+
+  register: async (data: {
+    email: string;
+    password1: string;
+    password2: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    gdpr_consent: boolean;
+  }) => {
+    const response = await api.post('/api/auth/register/', data);
+    return response.data;
+  },
+
+  logout: async () => {
+    const refresh = localStorage.getItem('refresh_token');
+    await api.post('/api/auth/logout/', refresh ? { refresh } : {});
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  },
+
+  me: async (): Promise<User> => {
+    const response = await api.get('/api/auth/users/me/');
+    return response.data;
+  },
+
+  requestPasswordReset: async (email: string) => {
+    const response = await api.post('/api/auth/password/reset/', { email });
+    return response.data;
+  },
+
+  confirmPasswordReset: async (uid: string, token: string, new_password1: string, new_password2: string) => {
+    const response = await api.post('/api/auth/password/reset/confirm/', {
+      uid,
+      token,
+      new_password1,
+      new_password2,
+    });
+    return response.data;
+  },
+
+  updateProfile: async (data: Partial<User>) => {
+    const response = await api.patch('/api/auth/users/update_me/', data);
+    return response.data;
+  },
+
+  uploadProfileImage: async (file: File): Promise<User> => {
+    const form = new FormData();
+    form.append('profile_image', file);
+    const response = await api.patch('/api/auth/users/update_me/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+};
+
+// Services API
+export const servicesAPI = {
+  list: async (): Promise<Service[]> => {
+    const response = await api.get('/api/services/');
+    return response.data.results || response.data;
+  },
+
+  get: async (id: number): Promise<Service> => {
+    const response = await api.get(`/api/services/${id}/`);
+    return response.data;
+  },
+};
+
+// Professionals API
+export const professionalsAPI = {
+  list: async (specialty?: string): Promise<Professional[]> => {
+    const params = specialty ? { specialty } : {};
+    const response = await api.get('/api/auth/users/professionals/', { params });
+    return response.data;
+  },
+
+  get: async (id: number): Promise<Professional> => {
+    const response = await api.get(`/api/auth/users/${id}/professional_detail/`);
+    return response.data;
+  },
+};
+
+// Bookings API
+export const bookingsAPI = {
+  list: async (): Promise<Booking[]> => {
+    const response = await api.get('/api/bookings/');
+    return response.data.results || response.data;
+  },
+
+  get: async (id: number): Promise<Booking> => {
+    const response = await api.get(`/api/bookings/${id}/`);
+    return response.data;
+  },
+
+  create: async (data: {
+    service: number;
+    professional: number;
+    start_datetime: string;
+    end_datetime: string;
+    client_notes?: string;
+  }): Promise<Booking> => {
+    const response = await api.post('/api/bookings/', data);
+    return response.data;
+  },
+
+  upcoming: async (): Promise<Booking[]> => {
+    const response = await api.get('/api/bookings/upcoming/');
+    return response.data;
+  },
+
+  past: async (): Promise<Booking[]> => {
+    const response = await api.get('/api/bookings/past/');
+    return response.data;
+  },
+
+  confirm: async (id: number): Promise<Booking> => {
+    const response = await api.post(`/api/bookings/${id}/confirm/`);
+    return response.data;
+  },
+
+  reject: async (id: number, reason?: string): Promise<Booking> => {
+    const response = await api.post(`/api/bookings/${id}/reject/`, { reason });
+    return response.data;
+  },
+
+  cancel: async (id: number, reason?: string): Promise<Booking> => {
+    const response = await api.post(`/api/bookings/${id}/cancel/`, { reason });
+    return response.data;
+  },
+
+  markDone: async (id: number): Promise<Booking> => {
+    const response = await api.post(`/api/bookings/${id}/mark_done/`);
+    return response.data;
+  },
+
+  myStats: async (): Promise<UserStats> => {
+    const response = await api.get('/api/bookings/my_stats/');
+    return response.data;
+  },
+};
+
+// Availability API
+export const availabilityAPI = {
+  getSlots: async (params: {
+    professional_id: number;
+    service_duration: number;
+    start_date?: string;
+    end_date?: string;
+  }): Promise<{ slots: TimeSlot[] }> => {
+    const response = await api.get('/api/availability/slots/get_slots/', { params });
+    return response.data;
+  },
+
+  getRules: async (professionalId?: number): Promise<AvailabilityRule[]> => {
+    const params = professionalId ? { professional: professionalId } : {};
+    const response = await api.get('/api/availability/rules/', { params });
+    return response.data.results || response.data;
+  },
+
+  createRule: async (data: {
+    professional?: number;
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }): Promise<AvailabilityRule> => {
+    const response = await api.post('/api/availability/rules/', data);
+    return response.data;
+  },
+
+  updateRule: async (id: number, data: Partial<AvailabilityRule>): Promise<AvailabilityRule> => {
+    const response = await api.patch(`/api/availability/rules/${id}/`, data);
+    return response.data;
+  },
+
+  deleteRule: async (id: number): Promise<void> => {
+    await api.delete(`/api/availability/rules/${id}/`);
+  },
+
+  getTimeOffs: async (professionalId?: number): Promise<TimeOff[]> => {
+    const params = professionalId ? { professional: professionalId } : {};
+    const response = await api.get('/api/availability/time-off/', { params });
+    return response.data.results || response.data;
+  },
+
+  createTimeOff: async (data: {
+    professional?: number;
+    start_date: string;
+    end_date: string;
+    reason?: string;
+  }): Promise<TimeOff> => {
+    const response = await api.post('/api/availability/time-off/', data);
+    return response.data;
+  },
+
+  deleteTimeOff: async (id: number): Promise<void> => {
+    await api.delete(`/api/availability/time-off/${id}/`);
+  },
+};
+
+// Reviews API
+export const reviewsAPI = {
+  list: async (params?: { professional?: number; booking?: number }): Promise<Review[]> => {
+    const response = await api.get('/api/reviews/', { params });
+    return response.data.results || response.data;
+  },
+
+  create: async (data: {
+    booking: number;
+    rating: number;
+    comment?: string;
+  }): Promise<Review> => {
+    const response = await api.post('/api/reviews/', data);
+    return response.data;
+  },
+};
+
+// Admin API: endpoints reservados a usuarios con rol ADMIN
+export interface BookingStats {
+  total_bookings: number;
+  pending_bookings: number;
+  confirmed_bookings: number;
+  completed_bookings: number;
+  canceled_bookings: number;
+  rejected_bookings: number;
+  bookings_by_service: Record<string, number>;
+  bookings_by_professional: Record<string, number>;
+  bookings_this_week: number;
+  bookings_this_month: number;
+}
+
+export interface UserStats {
+  total: number;
+  completed: number;
+  upcoming: number;
+  pending: number;
+  canceled: number;
+}
+
+export const adminAPI = {
+  // ----- Estadisticas de reservas -----
+  bookingStats: async (days: number = 30): Promise<BookingStats> => {
+    const response = await api.get('/api/bookings/stats/', { params: { days } });
+    return response.data;
+  },
+
+  // ----- Usuarios -----
+  listUsers: async (params?: {
+    role?: 'CLIENT' | 'PROFESSIONAL' | 'ADMIN';
+    is_active?: boolean;
+    search?: string;
+    ordering?: string;
+  }): Promise<User[]> => {
+    const response = await api.get('/api/auth/users/', { params });
+    return response.data.results || response.data;
+  },
+
+  createUser: async (data: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: 'CLIENT' | 'PROFESSIONAL' | 'ADMIN';
+    specialty?: string;
+    phone?: string;
+    password: string;
+  }): Promise<User> => {
+    const response = await api.post('/api/auth/users/', data);
+    return response.data;
+  },
+
+  updateUser: async (id: number, data: Partial<User> & { password?: string }): Promise<User> => {
+    const response = await api.patch(`/api/auth/users/${id}/`, data);
+    return response.data;
+  },
+
+  uploadUserPhoto: async (id: number, file: File): Promise<User> => {
+    const form = new FormData();
+    form.append('profile_image', file);
+    const response = await api.patch(`/api/auth/users/${id}/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteUser: async (id: number): Promise<void> => {
+    await api.delete(`/api/auth/users/${id}/`);
+  },
+
+  // ----- Reservas (todas, vista admin) -----
+  listAllBookings: async (params?: {
+    status?: Booking['status'];
+    professional?: number;
+    client?: number;
+    service?: number;
+    search?: string;
+    ordering?: string;
+  }): Promise<Booking[]> => {
+    const response = await api.get('/api/bookings/', { params });
+    return response.data.results || response.data;
+  },
+
+  // ----- Servicios CRUD -----
+  createService: async (data: FormData | Partial<Service>): Promise<Service> => {
+    const isForm = data instanceof FormData;
+    const response = await api.post('/api/services/', data, {
+      headers: isForm ? { 'Content-Type': 'multipart/form-data' } : {},
+    });
+    return response.data;
+  },
+
+  updateService: async (id: number, data: FormData | Partial<Service>): Promise<Service> => {
+    const isForm = data instanceof FormData;
+    const response = await api.patch(`/api/services/${id}/`, data, {
+      headers: isForm ? { 'Content-Type': 'multipart/form-data' } : {},
+    });
+    return response.data;
+  },
+
+  deleteService: async (id: number): Promise<void> => {
+    await api.delete(`/api/services/${id}/`);
+  },
+
+  listAllServices: async (): Promise<Service[]> => {
+    const response = await api.get('/api/services/');
+    return response.data.results || response.data;
+  },
+};
+
+
+// Contact API
+export const contactAPI = {
+  send: async (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    subject: string;
+    message: string;
+  }): Promise<{ detail: string }> => {
+    const response = await api.post('/api/contact/', data);
+    return response.data;
+  },
+};

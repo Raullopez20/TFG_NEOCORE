@@ -1,0 +1,74 @@
+# ============================================================================
+# NeoCore Backend — Dependencias Python
+# ============================================================================
+
+# Django Core
+Django==4.2.9
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-environ==0.11.2
+
+# Database — psycopg2-binary incluye los binarios para Neon (PostgreSQL + SSL)
+psycopg2-binary==2.9.9
+dj-database-url==2.1.0
+
+# Authentication
+django-allauth==0.60.1
+dj-rest-auth==5.0.2
+djoser==2.3.1
+PyJWT==2.8.0
+djangorestframework-simplejwt==5.3.1
+django-axes==6.5.1
+argon2-cffi==23.1.0
+
+# Server — Gunicorn para Docker local; Vercel usa el runtime Python nativo
+gunicorn==21.2.0
+whitenoise==6.6.0
+
+# API & Serialization
+drf-spectacular==0.27.0
+django-filter==23.5
+django-ratelimit==4.1.0
+django-csp==3.8
+django-bleach==3.1.0
+
+# Async tasks — Celery + Redis son opcionales; hay degradación elegante sin Redis
+celery==5.3.6
+redis==5.0.1
+django-celery-beat==2.6.0
+django-redis==5.4.0
+
+# Utils
+python-dateutil==2.8.2
+pytz==2023.3
+pillow==10.2.0
+cryptography==41.0.7
+django-encrypted-model-fields==0.6.5
+python-json-logger==2.0.7
+# python-magic usa libmagic (no disponible en Vercel); el código tiene fallback graceful
+python-magic==0.4.27
+
+# Email transaccional — Resend HTTP API (no SMTP, funciona en Vercel serverless)
+django-anymail[resend]==10.3
+
+# Almacenamiento de imágenes en la nube — Cloudinary (gratuito 25GB)
+# Sin esto, las imágenes van a /tmp/media que desaparece en cada cold start de Vercel
+cloudinary>=1.36.0
+django-cloudinary-storage>=0.3.0
+
+# Security
+django-admin-honeypot-updated-2021==1.2.0
+
+# Monitoring (opcional)
+django-prometheus==2.3.1
+
+# Testing (solo entorno de desarrollo)
+pytest==7.4.4
+pytest-django==4.7.0
+pytest-cov==4.1.0
+factory-boy==3.3.0
+faker==22.0.0
+
+# Code Quality
+ruff==0.1.14
+black==24.1.1
